@@ -233,3 +233,6 @@ pm2.log
 # OS specific files
 .DS_Store
 Thumbs.db
+
+/decoders/*/
+ttn_device_sessions.db

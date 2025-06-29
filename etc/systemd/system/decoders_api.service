@@ -1,0 +1,13 @@
+[Unit]
+Description=Node.js TTN Decoder API
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /home/ttnuser/ttn-message-interceptor/nodejs/decoders_api.js
+WorkingDirectory=/home/ttnuser/ttn-message-interceptor/nodejs
+Restart=always
+User=ttnuser
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
