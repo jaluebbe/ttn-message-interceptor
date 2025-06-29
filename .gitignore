@@ -205,3 +205,31 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Node.js dependencies
+node_modules/
+
+# npm and yarn logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Lock files (if using both npm and yarn, include both)
+package-lock.json
+yarn.lock
+
+# Build artifacts (if using a bundler or transpiler)
+dist/
+build/
+
+# Temporary files created by Node.js
+*.tmp
+*.swp
+
+# PM2 process manager logs and files (if using PM2)
+.pmx/
+pm2.log
+
+# OS specific files
+.DS_Store
+Thumbs.db
