@@ -1,59 +1,143 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const lora_packet = require("lora-packet");
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-function loadDecoder(application, device) {
+const ERROR_MESSAGES = {
+    MISSING_FIELDS: 'Invalid input. Required fields are missing.',
+    INVALID_MIC: 'Invalid MIC. The packet integrity check failed.',
+    UNSUPPORTED_FORMAT: 'Unsupported format. Only "hex" and "base64" are supported.',
+    DECRYPTION_FAILED: 'Failed to decrypt data.',
+    DECODING_FAILED: 'Failed to decode data.'
+};
+
+const decoderCache = {};
+
+function validateFields(fields, body) {
+    const missingFields = fields.filter(field => !body[field]);
+    if (missingFields.length > 0) {
+        return `Missing required fields: ${missingFields.join(', ')}`;
+    }
+    return null;
+}
+
+function sendError(res, status, message, details = null) {
+    const errorResponse = { error: message };
+    if (details) errorResponse.details = details;
+    res.status(status).json(errorResponse);
+}
+
+async function loadDecoder(application, device) {
+    const cacheKey = `${application}:${device}`;
+    if (decoderCache[cacheKey]) {
+        return decoderCache[cacheKey];
+    }
+
     const decoderPath = path.join(__dirname, '../decoders', application, `${device}.js`);
-    if (fs.existsSync(decoderPath)) {
-        return require(decoderPath);
-    } else {
+    try {
+        await fs.promises.access(decoderPath);
+        const decoder = require(decoderPath);
+        decoderCache[cacheKey] = decoder;
+        return decoder;
+    } catch {
         throw new Error(`Decoder not found for application "${application}" and device "${device}".`);
     }
 }
 
-function decodePayload(req, res, format) {
-    const {
-        application,
-        device,
-        payload,
-        fPort
-    } = req.body;
+async function decodePayload(req, res, format) {
+    const { application, device, payload, fPort } = req.body;
 
-    if (!application || !device || !payload || !fPort) {
-        return res.status(400).json({
-            error: 'Invalid input. "application", "device", "payload", and "fPort" fields are required.'
-        });
+    const validationError = validateFields(['application', 'device', 'payload', 'fPort'], req.body);
+    if (validationError) {
+        return sendError(res, 400, validationError);
     }
 
     try {
-        const decoder = loadDecoder(application, device);
+        const decoder = await loadDecoder(application, device);
         const bytes = Buffer.from(payload, format);
         const input = {
             bytes: Array.from(bytes),
             fPort
         };
         const result = decoder.decodeUplink(input);
-        res.json(result);
+        res.json({ status: 'success', decodedPayload: result });
     } catch (error) {
-        res.status(500).json({
-            error: 'Failed to decode data.',
-            details: error.message
-        });
+        sendError(res, 500, ERROR_MESSAGES.DECODING_FAILED, error.message);
     }
 }
 
-app.post('/decode/hex', (req, res) => {
-    decodePayload(req, res, 'hex');
-});
+function decryptPayload(req, res, format) {
+    const { payload, app_s_key, nwk_s_key } = req.body;
 
-app.post('/decode/base64', (req, res) => {
-    decodePayload(req, res, 'base64');
-});
+    const validationError = validateFields(['payload', 'app_s_key', 'nwk_s_key'], req.body);
+    if (validationError) {
+        return sendError(res, 400, validationError);
+    }
+
+    try {
+        const bytes = Buffer.from(payload, format);
+        const packet = lora_packet.fromWire(bytes);
+        const AppSKey = Buffer.from(app_s_key, 'hex');
+        const NwkSKey = Buffer.from(nwk_s_key, 'hex');
+
+        if (!lora_packet.verifyMIC(packet, NwkSKey)) {
+            return sendError(res, 400, ERROR_MESSAGES.INVALID_MIC);
+        }
+
+        const decryptedPayload = lora_packet.decrypt(packet, AppSKey, NwkSKey);
+        const formattedPayload = format === 'hex'
+            ? decryptedPayload.toString('hex')
+            : decryptedPayload.toString('base64');
+
+        res.json({ status: 'success', decryptedPayload: formattedPayload });
+    } catch (error) {
+        sendError(res, 500, ERROR_MESSAGES.DECRYPTION_FAILED, error.message);
+    }
+}
+
+function extractMessageInfo(req, res, format) {
+    const { payload } = req.body;
+
+    const validationError = validateFields(['payload'], req.body);
+    if (validationError) {
+        return sendError(res, 400, validationError);
+    }
+
+    try {
+        const bytes = Buffer.from(payload, format);
+        const packet = lora_packet.fromWire(bytes);
+
+        const info = {
+            devAddr: packet.DevAddr.toString('hex'),
+            fPort: packet.getFPort(),
+            fCnt: packet.getFCnt(),
+            mic: packet.MIC.toString('hex'),
+            mType: packet.getMType(),
+            direction: packet.getDir() === 0 ? 'uplink' : 'downlink',
+            payload: packet.FRMPayload.toString('hex'),
+            macPayload: packet.MACPayload.toString('hex'),
+            fCtrl: packet.FCtrl.toString('hex'),
+            fOpts: packet.FOpts.toString('hex'),
+            mhdr: packet.MHDR.toString('hex')
+        };
+
+        res.json({ status: 'success', messageInfo: info });
+    } catch (error) {
+        sendError(res, 500, 'Failed to extract message information.', error.message);
+    }
+}
+
+app.post('/decode/hex', (req, res) => decodePayload(req, res, 'hex'));
+app.post('/decode/base64', (req, res) => decodePayload(req, res, 'base64'));
+app.post('/decrypt/hex', (req, res) => decryptPayload(req, res, 'hex'));
+app.post('/decrypt/base64', (req, res) => decryptPayload(req, res, 'base64'));
+app.post('/info/hex', (req, res) => extractMessageInfo(req, res, 'hex'));
+app.post('/info/base64', (req, res) => extractMessageInfo(req, res, 'base64'));
 
 app.listen(port, (err) => {
     if (err) {
