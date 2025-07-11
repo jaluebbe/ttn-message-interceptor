@@ -11,7 +11,6 @@ app.use(express.json());
 const ERROR_MESSAGES = {
     MISSING_FIELDS: 'Invalid input. Required fields are missing.',
     INVALID_MIC: 'Invalid MIC. The packet integrity check failed.',
-    UNSUPPORTED_FORMAT: 'Unsupported format. Only "hex" and "base64" are supported.',
     DECRYPTION_FAILED: 'Failed to decrypt data.',
     DECODING_FAILED: 'Failed to decode data.'
 };
@@ -20,23 +19,16 @@ const decoderCache = {};
 
 function validateFields(fields, body) {
     const missingFields = fields.filter(field => !body[field]);
-    if (missingFields.length > 0) {
-        return `Missing required fields: ${missingFields.join(', ')}`;
-    }
-    return null;
+    return missingFields.length > 0 ? `Missing required fields: ${missingFields.join(', ')}` : null;
 }
 
 function sendError(res, status, message, details = null) {
-    const errorResponse = { error: message };
-    if (details) errorResponse.details = details;
-    res.status(status).json(errorResponse);
+    res.status(status).json({ error: message, details });
 }
 
 async function loadDecoder(application, device) {
     const cacheKey = `${application}:${device}`;
-    if (decoderCache[cacheKey]) {
-        return decoderCache[cacheKey];
-    }
+    if (decoderCache[cacheKey]) return decoderCache[cacheKey];
 
     const decoderPath = path.join(__dirname, '../decoders', application, `${device}.js`);
     try {
@@ -90,11 +82,7 @@ function decryptPayload(req, res, format) {
         }
 
         const decryptedPayload = lora_packet.decrypt(packet, AppSKey, NwkSKey);
-        const formattedPayload = format === 'hex'
-            ? decryptedPayload.toString('hex')
-            : decryptedPayload.toString('base64');
-
-        res.json({ status: 'success', decryptedPayload: formattedPayload });
+        res.json({ status: 'success', decryptedPayload: decryptedPayload.toString('hex') });
     } catch (error) {
         sendError(res, 500, ERROR_MESSAGES.DECRYPTION_FAILED, error.message);
     }
