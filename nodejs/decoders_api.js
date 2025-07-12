@@ -100,7 +100,7 @@ function extractMessageInfo(req, res, format) {
         const bytes = Buffer.from(payload, format);
         const packet = lora_packet.fromWire(bytes);
         const messageInfo = {
-            raw_message: bytes.toString('hex'),
+            rawMessage: bytes.toString('hex'),
             devAddr: packet.DevAddr.toString('hex'),
             fPort: packet.getFPort(),
             fCnt: packet.getFCnt(),
