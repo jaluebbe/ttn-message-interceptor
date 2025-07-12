@@ -57,7 +57,7 @@ async function decodePayload(req, res, format) {
             fPort
         };
         const result = decoder.decodeUplink(input);
-        res.json({ status: 'success', decodedPayload: result });
+        res.json(result);
     } catch (error) {
         sendError(res, 500, ERROR_MESSAGES.DECODING_FAILED, error.message);
     }
@@ -82,7 +82,7 @@ function decryptPayload(req, res, format) {
         }
 
         const decryptedPayload = lora_packet.decrypt(packet, AppSKey, NwkSKey);
-        res.json({ status: 'success', decryptedPayload: decryptedPayload.toString('hex') });
+        res.json(decryptedPayload.toString('hex'));
     } catch (error) {
         sendError(res, 500, ERROR_MESSAGES.DECRYPTION_FAILED, error.message);
     }
@@ -100,7 +100,7 @@ function extractMessageInfo(req, res, format) {
         const bytes = Buffer.from(payload, format);
         const packet = lora_packet.fromWire(bytes);
 
-        const info = {
+        const messageIinfo = {
             devAddr: packet.DevAddr.toString('hex'),
             fPort: packet.getFPort(),
             fCnt: packet.getFCnt(),
@@ -114,7 +114,7 @@ function extractMessageInfo(req, res, format) {
             mhdr: packet.MHDR.toString('hex')
         };
 
-        res.json({ status: 'success', messageInfo: info });
+        res.json(messageInfo);
     } catch (error) {
         sendError(res, 500, 'Failed to extract message information.', error.message);
     }
