@@ -99,15 +99,14 @@ function extractMessageInfo(req, res, format) {
     try {
         const bytes = Buffer.from(payload, format);
         const packet = lora_packet.fromWire(bytes);
-
-        const messageIinfo = {
+        const messageInfo = {
             devAddr: packet.DevAddr.toString('hex'),
             fPort: packet.getFPort(),
             fCnt: packet.getFCnt(),
             mic: packet.MIC.toString('hex'),
             mType: packet.getMType(),
             direction: packet.getDir() === 0 ? 'uplink' : 'downlink',
-            payload: packet.FRMPayload.toString('hex'),
+            frmPayload: packet.FRMPayload.toString('hex'),
             macPayload: packet.MACPayload.toString('hex'),
             fCtrl: packet.FCtrl.toString('hex'),
             fOpts: packet.FOpts.toString('hex'),
