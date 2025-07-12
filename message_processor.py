@@ -30,7 +30,6 @@ def _decrypt_message(raw_message: str, session_info: dict) -> dict | None:
     )
     if response.status_code == 200:
         return response.json()
-    return None
 
 
 def _decode_message(decrypted_payload: str, message_info: dict) -> dict | None:
@@ -46,7 +45,6 @@ def _decode_message(decrypted_payload: str, message_info: dict) -> dict | None:
     )
     if response.status_code == 200:
         return response.json()
-    return None
 
 
 def process_raw_message(
@@ -73,7 +71,9 @@ def process_raw_message(
     )
 
     if decrypt_message:
-        decrypted_payload = _decrypt_message(raw_message, session_info)
+        decrypted_payload = _decrypt_message(
+            message_info["rawMessage"], session_info
+        )
         if decrypted_payload:
             message_info["decryptedPayload"] = decrypted_payload
 
