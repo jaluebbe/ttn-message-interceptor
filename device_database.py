@@ -6,10 +6,15 @@ DB_FILE = "ttn_device_sessions.db"
 DECODERS_FOLDER = Path("decoders")
 
 
-def get_latest_session_by_dev_addr(dev_addr):
-    query = """
-        SELECT dev_eui, application_id, device_id, started_at, dev_addr,
-            app_s_key, nwk_s_key, up_formatter
+def get_latest_session_by_dev_addr(dev_addr, include_formatter=False):
+    fields = """
+        dev_eui, application_id, device_id, started_at, dev_addr,
+        app_s_key, nwk_s_key
+    """
+    if include_formatter:
+        fields += ", up_formatter"
+    query = f"""
+        SELECT {fields}
         FROM device_sessions
         WHERE dev_addr = ?
         ORDER BY started_at DESC
