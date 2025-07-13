@@ -1,13 +1,13 @@
 {
-  "name": "nodejs",
-  "version": "1.0.0",
+  "name": "lorawan-message-decoder",
+  "version": "0.1.0",
   "description": "",
   "main": "decoders_api.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Jannis Lübbe",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
