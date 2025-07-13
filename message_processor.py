@@ -5,6 +5,12 @@ from device_database import get_latest_session_by_dev_addr
 BASE_URL = "http://localhost:3000"
 
 
+def extract_nwkid(dev_addr: str) -> int:
+    dev_addr_int = int(dev_addr, 16)
+    nwkid = (dev_addr_int >> 25) & 0x7F
+    return nwkid
+
+
 def _fetch_message_info(
     raw_message: str, message_format: Literal["hex", "base64"]
 ) -> dict:
@@ -52,12 +58,15 @@ def process_raw_message(
     message_format: Literal["hex", "base64"] = "hex",
     decrypt_message: bool = True,
     decode_message: bool = True,
+    ttn_only: bool = True,
 ) -> dict:
     message_info = _fetch_message_info(raw_message, message_format)
     dev_addr = message_info.get("devAddr")
     if not dev_addr:
         return message_info
-
+    message_info["nwkId"] = extract_nwkid(dev_addr)
+    if ttn_only and message_info["nwkId"] != 19:
+        return message_info
     session_info = _fetch_session_info(dev_addr)
     if not session_info:
         return message_info
