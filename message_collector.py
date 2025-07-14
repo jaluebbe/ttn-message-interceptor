@@ -2,8 +2,6 @@ import socket
 import json
 import os
 import redis
-import arrow
-from message_database import insert_message
 from semtech_udp import process_message as process_udp_message
 
 if "REDIS_HOST" in os.environ:
@@ -31,8 +29,6 @@ while True:
     for _rxpk in rxpk_list:
         if gateway_eui:
             _rxpk["gateway_eui"] = gateway_eui
-        _timestamp = arrow.get(_rxpk["time"]).int_timestamp
         _json_rxpk = json.dumps(_rxpk)
         redis_connection.publish("rxpk", _json_rxpk)
-        insert_message(_timestamp, gateway_eui, _json_rxpk)
     redis_connection.publish("gateway_push_data", json.dumps(message_data))
