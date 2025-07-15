@@ -1,8 +1,11 @@
 from typing import Literal
+import os
 import requests
 from device_database import get_latest_session_by_dev_addr
 
-BASE_URL = "http://localhost:3000"
+decoder_host = os.environ.get("DECODER_HOST", "127.0.0.1")
+decoder_port = int(os.environ.get("DECODER_PORT", 3000))
+BASE_URL = f"http://{decoder_host}:{decoder_port}"
 
 
 def extract_nwkid(dev_addr: str) -> int:

@@ -4,11 +4,9 @@ import os
 import redis
 from semtech_udp import process_message as process_udp_message
 
-if "REDIS_HOST" in os.environ:
-    redis_host = os.environ["REDIS_HOST"]
-else:
-    redis_host = "127.0.0.1"
-redis_connection = redis.Redis(host=redis_host)
+redis_host = os.environ.get("REDIS_HOST", "127.0.0.1")
+redis_port = int(os.environ.get("REDIS_PORT", 6379))
+redis_connection = redis.Redis(host=redis_host, port=redis_port)
 
 UDP_IP = "0.0.0.0"
 UDP_PORT = 1700

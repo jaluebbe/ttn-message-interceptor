@@ -11,8 +11,8 @@ redis_host = os.environ.get("REDIS_HOST", "127.0.0.1")
 redis_port = int(os.environ.get("REDIS_PORT", 6379))
 REDIS_CHANNEL = "rxpk"
 
-redis_client = redis.StrictRedis(
-    host=redis_host, port=6379, decode_responses=True
+redis_client = redis.Redis(
+    host=redis_host, port=redis_port, decode_responses=True
 )
 
 
@@ -26,6 +26,7 @@ def process_packet(packet: dict):
         except HTTPError:
             logging.error(f"Problem with: {packet}")
             return
+        _message["receiveTimestamp"] = _timestamp
         if _gateway_eui is not None:
             _message["gatewayEui"] = _gateway_eui
         _json_message = json.dumps(_message)
