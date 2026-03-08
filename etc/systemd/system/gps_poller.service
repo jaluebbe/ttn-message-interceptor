@@ -1,0 +1,22 @@
+[Unit]
+Description=GPS Poller (gpsd → Redis)
+After=gpsd.service network.target
+Wants=gpsd.service
+
+[Service]
+Type=simple
+User=ttnuser
+Group=ttnuser
+
+WorkingDirectory=/home/ttnuser/ttn-message-interceptor
+ExecStart=/usr/bin/python3 /home/ttnuser/ttn-message-interceptor/gps_poller.py
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gps-poller
+
+[Install]
+WantedBy=multi-user.target
