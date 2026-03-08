@@ -1,0 +1,23 @@
+[Unit]
+Description=LoRa Packet Forwarder
+After=network-online.target gwmp_mux.service
+Wants=network-online.target
+Requires=gwmp_mux.service
+
+[Service]
+Type=simple
+User=ttnuser
+Group=ttnuser
+
+WorkingDirectory=/opt/lora_pkt_fwd
+ExecStart=/opt/lora_pkt_fwd/lora_pkt_fwd -c /etc/opt/lora_pkt_fwd/global_conf.json
+
+Restart=on-failure
+RestartSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lora_pkt_fwd
+
+[Install]
+WantedBy=multi-user.target
