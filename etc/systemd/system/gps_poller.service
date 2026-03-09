@@ -9,7 +9,7 @@ User=ttnuser
 Group=ttnuser
 
 WorkingDirectory=/home/ttnuser/ttn-message-interceptor
-ExecStart=/usr/bin/python3 /home/ttnuser/ttn-message-interceptor/gps_poller.py
+ExecStart=/home/ttnuser/ttn-message-interceptor/gps_poller.py
 
 Restart=on-failure
 RestartSec=10
