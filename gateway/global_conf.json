@@ -64,10 +64,7 @@
         "stat_interval": 30,
         "push_timeout_ms": 100,
         "forward_crc_valid": true,
-        "fake_gps": true,
-        "ref_latitude": 52.52,
-        "ref_longitude": 7.299,
-        "ref_altitude": 28,
+        "fake_gps": false,
         "beacon_period": 0
     }
 }
