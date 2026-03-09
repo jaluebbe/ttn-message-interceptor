@@ -1,0 +1,22 @@
+[Unit]
+Description=LoRa Message Collector (UDP → Redis)
+After=network-online.target redis.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ttnuser
+Group=ttnuser
+
+WorkingDirectory=/home/ttnuser/ttn-message-interceptor
+ExecStart=/home/ttnuser/ttn-message-interceptor/message_collector/message_collector.py
+
+Restart=on-failure
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=message-collector
+
+[Install]
+WantedBy=multi-user.target

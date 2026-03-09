@@ -1,3 +1,4 @@
+#!venv/bin/python3
 import socket
 import json
 import os
@@ -8,8 +9,8 @@ redis_host = os.environ.get("REDIS_HOST", "127.0.0.1")
 redis_port = int(os.environ.get("REDIS_PORT", 6379))
 redis_connection = redis.Redis(host=redis_host, port=redis_port)
 
-UDP_IP = "0.0.0.0"
-UDP_PORT = 1700
+UDP_IP = os.environ.get("COLLECTOR_HOST", "127.0.0.1")
+UDP_PORT = int(os.environ.get("COLLECTOR_PORT", 1701))
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((UDP_IP, UDP_PORT))
