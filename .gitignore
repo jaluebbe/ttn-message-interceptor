@@ -236,3 +236,4 @@ Thumbs.db
 
 /decoders/*/
 ttn_device_sessions.db
+lorawan_gateway_messages.db
