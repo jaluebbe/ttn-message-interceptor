@@ -1,3 +1,4 @@
+#!venv/bin/python3
 import sqlite3
 
 DB_NAME = "lorawan_gateway_messages.db"
