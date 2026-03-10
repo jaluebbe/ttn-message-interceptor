@@ -1,11 +1,14 @@
 import logging
 import json
 import os
-import arrow
+import time
 import redis
 from message_processor import process_raw_message
 from message_database import insert_message
 from requests import HTTPError
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 redis_host = os.environ.get("REDIS_HOST", "127.0.0.1")
 redis_port = int(os.environ.get("REDIS_PORT", 6379))
@@ -18,13 +21,12 @@ redis_client = redis.Redis(
 
 def process_packet(packet: dict):
     if "data" in packet:
-        _message_received = packet["time"]
-        _timestamp = arrow.get(_message_received).timestamp()
+        _timestamp = time.time()
         _gateway_eui = packet.get("gateway_eui")
         try:
             _message = process_raw_message(packet["data"], "base64")
         except HTTPError:
-            logging.error(f"Problem with: {packet}")
+            log.error("Problem with: %s", packet)
             return
         _message["receiveTimestamp"] = _timestamp
         if _gateway_eui is not None:

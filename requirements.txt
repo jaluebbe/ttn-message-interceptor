@@ -1,4 +1,3 @@
-arrow
 orjson
 redis
 requests
