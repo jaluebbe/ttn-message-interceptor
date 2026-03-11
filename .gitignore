@@ -144,6 +144,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# SQLite databases
+*.db
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -235,5 +238,3 @@ pm2.log
 Thumbs.db
 
 /decoders/*/
-ttn_device_sessions.db
-lorawan_gateway_messages.db
