@@ -32,6 +32,9 @@ def process_packet(packet: dict):
         _message["receiveTimestamp"] = _timestamp
         if _gateway_eui is not None:
             _message["gatewayEui"] = _gateway_eui
+        _gateway_location = packet.get("gateway_location")
+        if _gateway_location is not None:
+            _message["gatewayLocation"] = _gateway_location
         _json_message = json.dumps(_message)
         if _message.get("nwkId") == 19:
             insert_message(_timestamp, _gateway_eui, _json_message)

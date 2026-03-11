@@ -25,9 +25,13 @@ while True:
     gateway_eui = message_data["header"].get("gateway_id")
     json_payload = message_data["payload"]
     rxpk_list = json_payload.get("rxpk", [])
+    gps_raw = redis_connection.get("gps_latest")
+    gateway_location = json.loads(gps_raw) if gps_raw else None
     for _rxpk in rxpk_list:
         if gateway_eui:
             _rxpk["gateway_eui"] = gateway_eui
+        if gateway_location:
+            _rxpk["gateway_location"] = gateway_location
         _json_rxpk = json.dumps(_rxpk)
         redis_connection.publish("rxpk", _json_rxpk)
     redis_connection.publish("gateway_push_data", json.dumps(message_data))

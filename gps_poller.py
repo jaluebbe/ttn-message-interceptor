@@ -75,6 +75,16 @@ async def consume_gpsd():
                 if data["mode"] > 1:
                     data["sensor"] = "gps"
                     await redis_connection.publish("gps", orjson.dumps(data))
+                    await redis_connection.set(
+                        "gps_latest",
+                        orjson.dumps(
+                            {
+                                "lat": data["lat"],
+                                "lon": data["lon"],
+                                "alt": data.get("alt"),
+                            }
+                        ),
+                    )
                 if devices and old_utc:
                     _driver = devices[0].get("driver")
                     _path = devices[0].get("path")
