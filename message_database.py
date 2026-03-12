@@ -67,7 +67,11 @@ def create_database():
             )
             SELECT time, application_id, device_id, f_cnt, f_port,
                    gateway_eui, decoded_payload, source
-            FROM ranked WHERE rn = 1
+            FROM ranked
+            WHERE rn = 1
+              AND decoded_payload IS NOT NULL
+              AND device_id IS NOT NULL
+              AND application_id IS NOT NULL
             """
         )
 
