@@ -1,0 +1,7 @@
+# Fetch recent TTN Storage messages every 20 minutes.
+# Sensors send at 4–20 min intervals; TTN rate limit is 10 req/60 s.
+# TTN_STORAGE_LAST=25m gives a small overlap to avoid gaps.
+#
+# The daily anacron job (etc/cron.daily/update_ttn_devices) uses
+# TTN_STORAGE_LAST=44h as a safety net for outages.
+*/20 * * * * ttnuser TTN_STORAGE_LAST=25m /home/ttnuser/ttn-message-interceptor/venv/bin/python3 /home/ttnuser/ttn-message-interceptor/ttn_storage_fetcher.py

@@ -5,6 +5,16 @@ applications and store them in a local SQLite database.  This ensures that
 messages received by remote gateways remain available locally even during an
 internet outage.
 
+TTN rate limit: 10 requests per ~60 s window (x-rate-limit-limit header).
+With multiple applications per run, stay well below the limit by sleeping
+when the remaining budget runs low.  A 429 response is retried once after
+the server-indicated delay (x-rate-limit-retry header).
+
+Recommended cron schedule depending on sensor interval:
+  Daily   (anacron): TTN_STORAGE_LAST=44h   – full history safety net
+  ~20 min (cron):    TTN_STORAGE_LAST=25m   – near real-time fallback
+    */20 * * * * ...ttn_storage_fetcher.py
+
 Configuration via environment variables (or .env file):
   TTN_TOKEN                  – TTN API key with read access to applications,
                                devices and their stored uplinks.
@@ -17,6 +27,7 @@ Configuration via environment variables (or .env file):
 import json
 import logging
 import sqlite3
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -38,7 +49,9 @@ if not bearer_token:
     )
 
 _raw_apps = os.getenv("TTN_STORAGE_APPLICATIONS", "")
-APPLICATION_IDS: list[str] = [a.strip() for a in _raw_apps.split(",") if a.strip()]
+APPLICATION_IDS: list[str] = [
+    a.strip() for a in _raw_apps.split(",") if a.strip()
+]
 if not APPLICATION_IDS:
     raise ValueError(
         "No applications configured. "
@@ -50,7 +63,7 @@ API_BASE = os.getenv(
 ).rstrip("/")
 STORAGE_LAST = os.getenv("TTN_STORAGE_LAST", "44h")
 
-DB_NAME = "ttn_storage_messages.db"
+DB_NAME = "messages.db"
 
 
 def create_database() -> None:
@@ -68,9 +81,11 @@ def create_database() -> None:
 
 
 def _parse_timestamp(received_at: str) -> float:
-    return datetime.fromisoformat(
-        received_at.rstrip("Z")
-    ).replace(tzinfo=timezone.utc).timestamp()
+    return (
+        datetime.fromisoformat(received_at.rstrip("Z"))
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
 
 
 def insert_messages(messages: list[dict[str, Any]], application_id: str) -> int:
@@ -79,11 +94,11 @@ def insert_messages(messages: list[dict[str, Any]], application_id: str) -> int:
         try:
             ts = _parse_timestamp(msg["received_at"])
         except (KeyError, ValueError):
-            log.warning("Skipping message with unparseable received_at: %s", msg)
+            log.warning(
+                "Skipping message with unparseable received_at: %s", msg
+            )
             continue
-        device_id = (
-            msg.get("end_device_ids", {}).get("device_id")
-        )
+        device_id = msg.get("end_device_ids", {}).get("device_id")
         rows.append((ts, application_id, device_id, json.dumps(msg)))
 
     if not rows:
@@ -108,17 +123,50 @@ def fetch_messages(application_id: str) -> list[dict[str, Any]]:
         "Accept": "text/event-stream",
     }
     params = {"last": STORAGE_LAST, "order": "-received_at"}
-    try:
-        response = requests.get(url, headers=headers, params=params, timeout=30)
-        response.raise_for_status()
+    for attempt in range(2):
+        try:
+            response = requests.get(
+                url, headers=headers, params=params, timeout=30
+            )
+        except requests.RequestException:
+            log.exception("Request failed for application %s", application_id)
+            return []
+
+        rl_available = int(response.headers.get("x-rate-limit-available", 1))
+        rl_reset = int(response.headers.get("x-rate-limit-reset", 0))
+        rl_retry = int(response.headers.get("x-rate-limit-retry", 0))
+
+        if response.status_code == 429:
+            wait = rl_retry if rl_retry > 0 else rl_reset
+            log.warning(
+                "Rate limited for %s, retrying in %ds", application_id, wait
+            )
+            time.sleep(wait)
+            continue
+
+        # Sleep proactively when budget is nearly exhausted
+        if rl_available <= 1 and rl_reset > 0:
+            log.debug("Rate limit budget low, sleeping %ds", rl_reset)
+            time.sleep(rl_reset)
+
+        try:
+            response.raise_for_status()
+        except requests.RequestException:
+            log.exception(
+                "Failed to fetch messages for application %s", application_id
+            )
+            return []
+
         return [
             json.loads(line)["result"]
             for line in response.text.splitlines()
             if line.strip()
         ]
-    except requests.RequestException:
-        log.exception("Failed to fetch messages for application %s", application_id)
-        return []
+
+    log.error(
+        "Giving up on application %s after rate-limit retry", application_id
+    )
+    return []
 
 
 if __name__ == "__main__":

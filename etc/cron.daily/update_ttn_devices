@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+cd /home/ttnuser/ttn-message-interceptor
+/home/ttnuser/ttn-message-interceptor/venv/bin/python3 request_ttn_devices.py
+/home/ttnuser/ttn-message-interceptor/venv/bin/python3 device_database.py
+/home/ttnuser/ttn-message-interceptor/venv/bin/python3 ttn_storage_fetcher.py
