@@ -5,3 +5,9 @@
 # The daily anacron job (etc/cron.daily/update_ttn_devices) uses
 # TTN_STORAGE_LAST=44h as a safety net for outages.
 */20 * * * * ttnuser TTN_STORAGE_LAST=25m /home/ttnuser/ttn-message-interceptor/venv/bin/python3 /home/ttnuser/ttn-message-interceptor/ttn_storage_fetcher.py
+
+# Update device session keys and regenerate decoder files every hour.
+# Catches OTAA rejoins (new session keys) within 1 h instead of 24 h.
+# request_ttn_devices.py makes ~1+2N API calls per application (N devices);
+# running hourly stays well within the TTN rate limit of 10 req/60 s.
+0 * * * * ttnuser cd /home/ttnuser/ttn-message-interceptor && venv/bin/python3 request_ttn_devices.py && venv/bin/python3 device_database.py
