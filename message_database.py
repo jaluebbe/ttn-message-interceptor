@@ -29,40 +29,33 @@ def create_database():
         conn.execute(
             """
             CREATE VIEW IF NOT EXISTS messages AS
-            WITH combined AS (
-                SELECT
-                    timestamp AS time,
-                    json_extract(payload, '$.applicationId') AS application_id,
-                    json_extract(payload, '$.deviceId') AS device_id,
-                    CAST(json_extract(payload, '$.fCnt') AS INTEGER) AS f_cnt,
-                    CAST(json_extract(payload, '$.fPort') AS INTEGER) AS f_port,
-                    gateway_eui,
-                    json_extract(payload, '$.decodedPayload') AS decoded_payload,
-                    'gateway' AS source
-                FROM lorawan_messages
-                UNION ALL
-                SELECT
-                    time,
-                    application_id,
-                    device_id,
-                    CAST(json_extract(data, '$.uplink_message.f_cnt') AS INTEGER) AS f_cnt,
-                    CAST(json_extract(data, '$.uplink_message.f_port') AS INTEGER) AS f_port,
-                    lower(json_extract(data, '$.uplink_message.rx_metadata[0].gateway_ids.eui')) AS gateway_eui,
-                    json_extract(data, '$.uplink_message.decoded_payload') AS decoded_payload,
-                    'storage' AS source
-                FROM ttn_storage_messages
-            ),
-            ranked AS (
-                SELECT *,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY device_id, f_cnt
-                        ORDER BY source  -- 'gateway' < 'storage': local record wins
-                    ) AS rn
-                FROM combined
+            SELECT
+                timestamp AS time,
+                json_extract(payload, '$.applicationId') AS application_id,
+                json_extract(payload, '$.deviceId') AS device_id,
+                CAST(json_extract(payload, '$.fCnt') AS INTEGER) AS f_cnt,
+                CAST(json_extract(payload, '$.fPort') AS INTEGER) AS f_port,
+                gateway_eui,
+                json_extract(payload, '$.decodedPayload') AS decoded_payload,
+                'gateway' AS source
+            FROM lorawan_messages
+            UNION ALL
+            SELECT
+                time,
+                application_id,
+                device_id,
+                CAST(json_extract(data, '$.uplink_message.f_cnt') AS INTEGER) AS f_cnt,
+                CAST(json_extract(data, '$.uplink_message.f_port') AS INTEGER) AS f_port,
+                lower(json_extract(data, '$.uplink_message.rx_metadata[0].gateway_ids.eui')) AS gateway_eui,
+                json_extract(data, '$.uplink_message.decoded_payload') AS decoded_payload,
+                'storage' AS source
+            FROM ttn_storage_messages
+            WHERE NOT EXISTS (
+                SELECT 1 FROM lorawan_messages
+                WHERE json_extract(payload, '$.deviceId') = ttn_storage_messages.device_id
+                AND CAST(json_extract(payload, '$.fCnt') AS INTEGER)
+                    = CAST(json_extract(ttn_storage_messages.data, '$.uplink_message.f_cnt') AS INTEGER)
             )
-            SELECT time, application_id, device_id, f_cnt, f_port,
-                   gateway_eui, decoded_payload, source
-            FROM ranked WHERE rn = 1
             """
         )
 
