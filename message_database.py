@@ -65,7 +65,9 @@ def create_database():
                     ) AS rn
                 FROM combined
             )
-            SELECT time, application_id, device_id, f_cnt, f_port,
+            SELECT time,
+                   strftime('%Y-%m-%d %H:%M:%S', time, 'unixepoch') AS time_utc,
+                   application_id, device_id, f_cnt, f_port,
                    gateway_eui, decoded_payload, source
             FROM ranked
             WHERE rn = 1
