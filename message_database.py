@@ -26,9 +26,10 @@ def create_database():
             )
             """
         )
+        conn.execute("DROP VIEW IF EXISTS messages")
         conn.execute(
             """
-            CREATE VIEW IF NOT EXISTS messages AS
+            CREATE VIEW messages AS
             WITH combined AS (
                 SELECT
                     timestamp AS time,
@@ -56,7 +57,11 @@ def create_database():
                 SELECT *,
                     ROW_NUMBER() OVER (
                         PARTITION BY device_id, f_cnt
-                        ORDER BY source  -- 'gateway' < 'storage': local record wins
+                        ORDER BY
+                            -- decoded records win over undecoded ones
+                            CASE WHEN decoded_payload IS NULL THEN 1 ELSE 0 END,
+                            -- among equally decoded, gateway wins over storage
+                            source
                     ) AS rn
                 FROM combined
             )
