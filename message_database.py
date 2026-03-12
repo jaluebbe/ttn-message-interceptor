@@ -74,6 +74,7 @@ def create_database():
               AND decoded_payload IS NOT NULL
               AND device_id IS NOT NULL
               AND application_id IS NOT NULL
+            ORDER BY time
             """
         )
 
