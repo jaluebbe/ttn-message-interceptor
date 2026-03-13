@@ -56,14 +56,12 @@ def _decode_message(decrypted_payload: str, message_info: dict) -> dict | None:
         return response.json()
 
 
-def process_raw_message(
-    raw_message: str,
-    message_format: Literal["hex", "base64"] = "hex",
+def process_message(
+    message_info: dict,
     decrypt_message: bool = True,
     decode_message: bool = True,
     ttn_only: bool = True,
 ) -> dict:
-    message_info = _fetch_message_info(raw_message, message_format)
     dev_addr = message_info.get("devAddr")
     if not dev_addr:
         return message_info
@@ -97,3 +95,18 @@ def process_raw_message(
             message_info["decodedPayload"] = decoded_payload
 
     return message_info
+
+
+def process_raw_message(
+    raw_message: str,
+    message_format: Literal["hex", "base64"] = "hex",
+    decrypt_message: bool = True,
+    decode_message: bool = True,
+    ttn_only: bool = True,
+) -> dict:
+    return process_message(
+        message_info=_fetch_message_info(raw_message, message_format),
+        decrypt_message=decrypt_message,
+        decode_message=decode_message,
+        ttn_only=ttn_only,
+    )
