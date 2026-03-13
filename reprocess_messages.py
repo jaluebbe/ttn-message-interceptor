@@ -30,7 +30,6 @@ UPDATE_SQL = """
 def reprocess():
     with sqlite3.connect(DB_NAME) as conn:
         rows = conn.execute(SELECT_SQL).fetchall()
-        log.info("Found %d messages to reprocess", len(rows))
 
         updated = 0
         skipped = 0
@@ -53,7 +52,8 @@ def reprocess():
             updated += 1
 
         conn.commit()
-        log.info("Done: %d updated, %d skipped", updated, skipped)
+        if updated > 0:
+            log.info("Done: %d updated, %d skipped", updated, skipped)
 
 
 if __name__ == "__main__":
