@@ -1,4 +1,6 @@
 dotenv
+fastapi
 orjson
 redis
 requests
+uvicorn
