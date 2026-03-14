@@ -41,51 +41,61 @@ def _feature_collection(rows) -> dict:
     }
 
 
-# Subquery wrapper ensures aliases (latitude, longitude) are visible in WHERE
-# Uses all_messages (simple UNION ALL) instead of messages (window function)
-# so SQLite can push the application_id filter down to indexed tables.
-_GPS_SUBQUERY = """
+# all_messages: fast UNION ALL, filter pushdown via indexes – used for latest queries
+# messages: deduplicated via ROW_NUMBER() – used for history queries
+_GPS_SUBQUERY_LATEST = """
     SELECT time, time_utc, device_id, source,
            json_extract(decoded_payload, '$.Latitude')  AS latitude,
            json_extract(decoded_payload, '$.Longitude') AS longitude
     FROM all_messages
-    WHERE application_id = ?{device_filter}
+    WHERE application_id = ?
 """
 
-
-def _gps_sql(device_filter: str = "", latest_only: bool = False) -> str:
-    inner = _GPS_SUBQUERY.format(device_filter=device_filter)
-    outer = f"SELECT * FROM ({inner}) WHERE latitude IS NOT NULL"
-    if latest_only:
-        return outer + " GROUP BY device_id HAVING MAX(time)"
-    return outer + " ORDER BY time"
+_GPS_SUBQUERY_HISTORY = """
+    SELECT time, time_utc, device_id, source,
+           json_extract(decoded_payload, '$.Latitude')  AS latitude,
+           json_extract(decoded_payload, '$.Longitude') AS longitude
+    FROM messages
+    WHERE application_id = ? AND device_id = ?
+"""
 
 
 @app.get("/api/gps/latest")
 def gps_latest(application_id: str = Query(...)):
     """Latest position per device as GeoJSON FeatureCollection."""
-    rows = _db.execute(_gps_sql(latest_only=True), (application_id,)).fetchall()
+    sql = (
+        f"SELECT * FROM ({_GPS_SUBQUERY_LATEST}) WHERE latitude IS NOT NULL"
+        " GROUP BY device_id HAVING MAX(time)"
+    )
+    rows = _db.execute(sql, (application_id,)).fetchall()
     return _feature_collection(rows)
 
 
 @app.get("/api/gps/track/{device_id}")
 def gps_track(device_id: str, application_id: str = Query(...)):
     """Full position history for one device as GeoJSON FeatureCollection."""
-    rows = _db.execute(
-        _gps_sql(device_filter=" AND device_id = ?"),
-        (application_id, device_id),
-    ).fetchall()
+    sql = (
+        f"SELECT * FROM ({_GPS_SUBQUERY_HISTORY}) WHERE latitude IS NOT NULL"
+        " ORDER BY time"
+    )
+    rows = _db.execute(sql, (application_id, device_id)).fetchall()
     if not rows:
         raise HTTPException(status_code=404, detail="No GPS data found")
     return _feature_collection(rows)
 
 
-# json_extract is evaluated once in the subquery; outer WHERE filters NULL cleanly.
-# Uses all_messages (simple UNION ALL) for filter pushdown performance.
-_SENSOR_SUBQUERY = """
+# json_extract evaluated once in subquery; outer WHERE filters NULL cleanly.
+_SENSOR_SUBQUERY_LATEST = """
     SELECT time, time_utc, device_id,
            json_extract(decoded_payload, ?) AS value
     FROM all_messages
+    WHERE application_id = ?
+"""
+
+_SENSOR_SUBQUERY_HISTORY = """
+    SELECT time, time_utc, device_id,
+           json_extract(decoded_payload, ?) AS value
+    FROM messages
     WHERE application_id = ?
 """
 
@@ -96,7 +106,7 @@ def sensors_timeseries(
 ):
     """Time series per device: {device_id: [{time, time_utc, value}, ...]}"""
     sql = (
-        f"SELECT * FROM ({_SENSOR_SUBQUERY}) WHERE value IS NOT NULL"
+        f"SELECT * FROM ({_SENSOR_SUBQUERY_HISTORY}) WHERE value IS NOT NULL"
         " ORDER BY device_id, time"
     )
     rows = _db.execute(sql, (f"$.{field}", application_id)).fetchall()
@@ -116,7 +126,7 @@ def sensors_timeseries(
 def sensors_latest(application_id: str = Query(...), field: str = Query(...)):
     """Latest value with timestamp per device: {device_id: {time, time_utc, value}}"""
     sql = (
-        f"SELECT * FROM ({_SENSOR_SUBQUERY}) WHERE value IS NOT NULL"
+        f"SELECT * FROM ({_SENSOR_SUBQUERY_LATEST}) WHERE value IS NOT NULL"
         " GROUP BY device_id HAVING MAX(time)"
     )
     rows = _db.execute(sql, (f"$.{field}", application_id)).fetchall()
