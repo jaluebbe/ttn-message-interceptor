@@ -23,6 +23,9 @@ _SQL_CREATE_INDEXES = """
         ON ttn_storage_messages (application_id, time);
     CREATE INDEX IF NOT EXISTS idx_ttn_storage_app_device_time
         ON ttn_storage_messages (application_id, device_id, time);
+    CREATE INDEX IF NOT EXISTS idx_ttn_storage_gps_time
+        ON ttn_storage_messages (application_id, device_id, time)
+        WHERE latitude_val IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_lorawan_app_time
         ON lorawan_messages (application_id, timestamp);
     CREATE INDEX IF NOT EXISTS idx_lorawan_app_device_time
@@ -34,7 +37,13 @@ _SQL_CREATE_TTN_STORAGE_MESSAGES = """
         time FLOAT PRIMARY KEY,
         application_id TEXT NOT NULL,
         device_id TEXT,
-        data JSON
+        data JSON,
+        latitude_val  REAL GENERATED ALWAYS AS (
+            json_extract(data, '$.uplink_message.decoded_payload.Latitude')
+        ) VIRTUAL,
+        longitude_val REAL GENERATED ALWAYS AS (
+            json_extract(data, '$.uplink_message.decoded_payload.Longitude')
+        ) VIRTUAL
     )
 """
 
@@ -131,6 +140,7 @@ _SQL_CREATE_MESSAGES = """
 
 def create_database():
     with sqlite3.connect(DB_NAME) as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.execute(_SQL_CREATE_LORAWAN_MESSAGES)
         conn.execute(_SQL_CREATE_TTN_STORAGE_MESSAGES)
         for view in (
@@ -146,6 +156,19 @@ def create_database():
         conn.execute(_SQL_CREATE_GATEWAY_MESSAGES)
         conn.execute(_SQL_CREATE_ALL_MESSAGES)
         conn.execute(_SQL_CREATE_MESSAGES)
+        # Idempotent migration: add lat/lon generated columns to existing tables
+        for col_stmt in (
+            "ALTER TABLE ttn_storage_messages ADD COLUMN latitude_val REAL"
+            " GENERATED ALWAYS AS (json_extract(data,"
+            " '$.uplink_message.decoded_payload.Latitude')) VIRTUAL",
+            "ALTER TABLE ttn_storage_messages ADD COLUMN longitude_val REAL"
+            " GENERATED ALWAYS AS (json_extract(data,"
+            " '$.uplink_message.decoded_payload.Longitude')) VIRTUAL",
+        ):
+            try:
+                conn.execute(col_stmt)
+            except sqlite3.OperationalError:
+                pass  # column already exists
         for statement in _SQL_CREATE_INDEXES.strip().split(";"):
             if statement.strip():
                 conn.execute(statement)
