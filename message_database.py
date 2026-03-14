@@ -76,6 +76,17 @@ _SQL_CREATE_GATEWAY_MESSAGES = """
     WHERE decoded_payload IS NOT NULL
 """
 
+_SQL_CREATE_ALL_MESSAGES = """
+    CREATE VIEW all_messages AS
+    SELECT time, time_utc, application_id, device_id,
+           dev_addr, f_cnt, decoded_payload, source
+    FROM ttn_messages
+    UNION ALL
+    SELECT time, time_utc, application_id, device_id,
+           dev_addr, f_cnt, decoded_payload, source
+    FROM gateway_messages
+"""
+
 _SQL_CREATE_MESSAGES = """
     CREATE VIEW messages AS
     WITH combined AS (
@@ -120,6 +131,7 @@ def create_database():
         conn.execute(_SQL_CREATE_TTN_STORAGE_MESSAGES)
         for view in (
             "messages",
+            "all_messages",
             "ttn_messages",
             "gateway_messages",
             "ttn_messages_debug",
@@ -128,6 +140,7 @@ def create_database():
             conn.execute(f"DROP VIEW IF EXISTS {view}")
         conn.execute(_SQL_CREATE_TTN_MESSAGES)
         conn.execute(_SQL_CREATE_GATEWAY_MESSAGES)
+        conn.execute(_SQL_CREATE_ALL_MESSAGES)
         conn.execute(_SQL_CREATE_MESSAGES)
         for statement in _SQL_CREATE_INDEXES.strip().split(";"):
             if statement.strip():

@@ -11,7 +11,9 @@ DB_NAME = "messages.db"
 app = FastAPI()
 
 # Persistent read-only connection; WAL mode allows concurrent reads alongside writes
-_db = sqlite3.connect(f"file:{DB_NAME}?mode=ro", uri=True, check_same_thread=False)
+_db = sqlite3.connect(
+    f"file:{DB_NAME}?mode=ro", uri=True, check_same_thread=False
+)
 _db.row_factory = sqlite3.Row
 _db.execute("PRAGMA journal_mode=WAL")
 
@@ -40,11 +42,13 @@ def _feature_collection(rows) -> dict:
 
 
 # Subquery wrapper ensures aliases (latitude, longitude) are visible in WHERE
+# Uses all_messages (simple UNION ALL) instead of messages (window function)
+# so SQLite can push the application_id filter down to indexed tables.
 _GPS_SUBQUERY = """
     SELECT time, time_utc, device_id, source,
            json_extract(decoded_payload, '$.Latitude')  AS latitude,
            json_extract(decoded_payload, '$.Longitude') AS longitude
-    FROM messages
+    FROM all_messages
     WHERE application_id = ?{device_filter}
 """
 
@@ -68,19 +72,20 @@ def gps_latest(application_id: str = Query(...)):
 def gps_track(device_id: str, application_id: str = Query(...)):
     """Full position history for one device as GeoJSON FeatureCollection."""
     rows = _db.execute(
-            _gps_sql(device_filter=" AND device_id = ?"),
-            (application_id, device_id),
-        ).fetchall()
+        _gps_sql(device_filter=" AND device_id = ?"),
+        (application_id, device_id),
+    ).fetchall()
     if not rows:
         raise HTTPException(status_code=404, detail="No GPS data found")
     return _feature_collection(rows)
 
 
-# json_extract is evaluated once in the subquery; outer WHERE filters NULL cleanly
+# json_extract is evaluated once in the subquery; outer WHERE filters NULL cleanly.
+# Uses all_messages (simple UNION ALL) for filter pushdown performance.
 _SENSOR_SUBQUERY = """
     SELECT time, time_utc, device_id,
            json_extract(decoded_payload, ?) AS value
-    FROM messages
+    FROM all_messages
     WHERE application_id = ?
 """
 
