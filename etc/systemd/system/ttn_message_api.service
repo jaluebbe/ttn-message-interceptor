@@ -1,0 +1,17 @@
+[Unit]
+Description=TTN message API
+After=network-online.target redis.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ttnuser
+Restart=on-failure
+RestartSec=5
+WorkingDirectory=/home/ttnuser/ttn-message-interceptor
+ExecStart=/home/ttnuser/ttn-message-interceptor/venv/bin/uvicorn message_api:app --host 0.0.0.0 --port 8080
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
