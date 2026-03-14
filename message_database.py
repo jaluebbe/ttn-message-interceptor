@@ -78,12 +78,16 @@ _SQL_CREATE_GATEWAY_MESSAGES = """
 
 _SQL_CREATE_ALL_MESSAGES = """
     CREATE VIEW all_messages AS
-    SELECT time, time_utc, application_id, device_id,
-           dev_addr, f_cnt, decoded_payload, source
+    SELECT time,
+           strftime('%Y-%m-%d %H:%M:%S', time, 'unixepoch') AS time_utc,
+           application_id, device_id,
+           dev_addr, f_cnt, decoded_payload, 'storage' AS source
     FROM ttn_messages
     UNION ALL
-    SELECT time, time_utc, application_id, device_id,
-           dev_addr, f_cnt, decoded_payload, source
+    SELECT time,
+           strftime('%Y-%m-%d %H:%M:%S', time, 'unixepoch') AS time_utc,
+           application_id, device_id,
+           dev_addr, f_cnt, decoded_payload, 'gateway' AS source
     FROM gateway_messages
 """
 
