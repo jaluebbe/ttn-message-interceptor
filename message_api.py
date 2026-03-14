@@ -1,7 +1,6 @@
 #!venv/bin/python3
 import os
 import sqlite3
-from contextlib import contextmanager
 
 from fastapi import FastAPI, HTTPException, Query, Response
 from redis import asyncio as aioredis
@@ -11,15 +10,10 @@ DB_NAME = "messages.db"
 
 app = FastAPI()
 
-
-@contextmanager
-def get_db():
-    conn = sqlite3.connect(f"file:{DB_NAME}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-    finally:
-        conn.close()
+# Persistent read-only connection; WAL mode allows concurrent reads alongside writes
+_db = sqlite3.connect(f"file:{DB_NAME}?mode=ro", uri=True, check_same_thread=False)
+_db.row_factory = sqlite3.Row
+_db.execute("PRAGMA journal_mode=WAL")
 
 
 def _gps_feature(row) -> dict:
@@ -66,18 +60,14 @@ def _gps_sql(device_filter: str = "", latest_only: bool = False) -> str:
 @app.get("/api/gps/latest")
 def gps_latest(application_id: str = Query(...)):
     """Latest position per device as GeoJSON FeatureCollection."""
-    with get_db() as conn:
-        rows = conn.execute(
-            _gps_sql(latest_only=True), (application_id,)
-        ).fetchall()
+    rows = _db.execute(_gps_sql(latest_only=True), (application_id,)).fetchall()
     return _feature_collection(rows)
 
 
 @app.get("/api/gps/track/{device_id}")
 def gps_track(device_id: str, application_id: str = Query(...)):
     """Full position history for one device as GeoJSON FeatureCollection."""
-    with get_db() as conn:
-        rows = conn.execute(
+    rows = _db.execute(
             _gps_sql(device_filter=" AND device_id = ?"),
             (application_id, device_id),
         ).fetchall()
@@ -104,8 +94,7 @@ def sensors_timeseries(
         f"SELECT * FROM ({_SENSOR_SUBQUERY}) WHERE value IS NOT NULL"
         " ORDER BY device_id, time"
     )
-    with get_db() as conn:
-        rows = conn.execute(sql, (f"$.{field}", application_id)).fetchall()
+    rows = _db.execute(sql, (f"$.{field}", application_id)).fetchall()
     result: dict = {}
     for row in rows:
         result.setdefault(row["device_id"], []).append(
@@ -125,8 +114,7 @@ def sensors_latest(application_id: str = Query(...), field: str = Query(...)):
         f"SELECT * FROM ({_SENSOR_SUBQUERY}) WHERE value IS NOT NULL"
         " GROUP BY device_id HAVING MAX(time)"
     )
-    with get_db() as conn:
-        rows = conn.execute(sql, (f"$.{field}", application_id)).fetchall()
+    rows = _db.execute(sql, (f"$.{field}", application_id)).fetchall()
     return {
         row["device_id"]: {
             "time": row["time"],

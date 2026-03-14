@@ -8,8 +8,25 @@ _SQL_CREATE_LORAWAN_MESSAGES = """
         timestamp FLOAT,
         gateway_eui TEXT,
         payload JSON,
+        application_id TEXT GENERATED ALWAYS AS (
+            json_extract(payload, '$.applicationId')
+        ) STORED,
+        device_id TEXT GENERATED ALWAYS AS (
+            json_extract(payload, '$.deviceId')
+        ) STORED,
         PRIMARY KEY (timestamp, gateway_eui)
     )
+"""
+
+_SQL_CREATE_INDEXES = """
+    CREATE INDEX IF NOT EXISTS idx_ttn_storage_app_time
+        ON ttn_storage_messages (application_id, time);
+    CREATE INDEX IF NOT EXISTS idx_ttn_storage_app_device_time
+        ON ttn_storage_messages (application_id, device_id, time);
+    CREATE INDEX IF NOT EXISTS idx_lorawan_app_time
+        ON lorawan_messages (application_id, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_lorawan_app_device_time
+        ON lorawan_messages (application_id, device_id, timestamp);
 """
 
 _SQL_CREATE_TTN_STORAGE_MESSAGES = """
@@ -112,6 +129,9 @@ def create_database():
         conn.execute(_SQL_CREATE_TTN_MESSAGES)
         conn.execute(_SQL_CREATE_GATEWAY_MESSAGES)
         conn.execute(_SQL_CREATE_MESSAGES)
+        for statement in _SQL_CREATE_INDEXES.strip().split(";"):
+            if statement.strip():
+                conn.execute(statement)
 
 
 def insert_message(timestamp, gateway_eui, payload):
