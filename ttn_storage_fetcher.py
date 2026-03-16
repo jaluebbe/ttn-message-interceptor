@@ -63,21 +63,7 @@ API_BASE = os.getenv(
 ).rstrip("/")
 STORAGE_LAST = os.getenv("TTN_STORAGE_LAST", "44h")
 
-DB_NAME = "messages.db"
-
-
-def create_database() -> None:
-    with sqlite3.connect(DB_NAME) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ttn_storage_messages (
-                time FLOAT PRIMARY KEY,
-                application_id TEXT NOT NULL,
-                device_id TEXT,
-                data JSON
-            )
-            """
-        )
+from message_database import DB_NAME, create_database
 
 
 def _parse_timestamp(received_at: str) -> float:

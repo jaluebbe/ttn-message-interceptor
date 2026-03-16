@@ -14,7 +14,7 @@ if not bearer_token:
 session = requests.Session()
 session.headers.update({"Authorization": f"Bearer {bearer_token}"})
 API_URL = "https://eu1.cloud.thethings.network/api/v3"
-DB_FILE = "ttn_device_sessions.db"
+DB_FILE = os.path.join(os.getenv("DB_DIR", "."), "ttn_device_sessions.db")
 
 
 def initialize_database():
