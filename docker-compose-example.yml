@@ -1,0 +1,66 @@
+services:
+
+  redis:
+    image: "redis:alpine"
+    restart: always
+    command: redis-server --save ""
+    # uncomment if you need redis access for local debugging.
+    # ports:
+    #   - "127.0.0.1:6379:6379"
+
+  lorawan-collector:
+    restart: unless-stopped
+    image: ttn-message-collector
+    build: ./github/ttn-message-interceptor/message_collector
+    ports:
+      - "1700:1700/udp"
+    environment:
+      - REDIS_HOST=redis
+      - COLLECTOR_HOST=0.0.0.0
+      - COLLECTOR_PORT=1700
+    depends_on:
+      - redis
+
+  lorawan-handler:
+    restart: unless-stopped
+    image: lorawan-handler
+    build: ./github/ttn-message-interceptor
+    volumes:
+      - ./data:/app/data
+    environment:
+      - REDIS_HOST=redis
+      - DECODER_HOST=lorawan-decoder
+      - DB_DIR=/app/data
+    depends_on:
+      - redis
+      - lorawan-decoder
+
+  lorawan-decoder:
+    restart: unless-stopped
+    image: lorawan-decoder
+    build: ./github/ttn-message-interceptor/nodejs
+    ports:
+      - "127.0.0.1:3000:3000" # Bind to localhost only
+    volumes:
+      - ./decoders:/usr/src/decoders
+    environment:
+      - NODE_ENV=production
+
+  lorawan-tools:
+    profiles: ["tools"]
+    restart: "no"
+    image: lorawan-handler
+    build: ./github/ttn-message-interceptor
+    volumes:
+      - ./data:/app/data
+      - ./decoders:/app/decoders
+    environment:
+      - REDIS_HOST=redis
+      - DECODER_HOST=lorawan-decoder
+      - DB_DIR=/app/data
+      - DECODERS_DIR=/app/decoders
+      - TTN_TOKEN=${TTN_TOKEN}
+      - TTN_STORAGE_APPLICATIONS=${TTN_STORAGE_APPLICATIONS}
+    depends_on:
+      - redis
+      - lorawan-decoder
