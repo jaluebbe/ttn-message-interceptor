@@ -1,9 +1,10 @@
 #!/usr/bin/python3
+import os
 import sqlite3
 from pathlib import Path
 
-DB_FILE = "ttn_device_sessions.db"
-DECODERS_FOLDER = Path("decoders")
+DB_FILE = os.path.join(os.getenv("DB_DIR", "."), "ttn_device_sessions.db")
+DECODERS_FOLDER = Path(os.getenv("DECODERS_DIR", "decoders"))
 
 
 def get_latest_session_by_dev_addr(dev_addr, include_formatter=False):

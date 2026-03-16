@@ -6,13 +6,12 @@ import logging
 import sqlite3
 from requests import HTTPError
 import message_processor
+from message_database import DB_NAME
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
-
-DB_NAME = "messages.db"
 
 SELECT_SQL = """
     SELECT timestamp, gateway_eui, payload

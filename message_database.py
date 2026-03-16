@@ -1,7 +1,10 @@
 #!venv/bin/python3
+import os
 import sqlite3
 
-DB_NAME = "messages.db"
+# DB_DIR can be set to store databases in a specific directory.
+# Defaults to '.' (current working directory).
+DB_NAME = os.path.join(os.getenv("DB_DIR", "."), "messages.db")
 
 _SQL_CREATE_LORAWAN_MESSAGES = """
     CREATE TABLE IF NOT EXISTS lorawan_messages (
