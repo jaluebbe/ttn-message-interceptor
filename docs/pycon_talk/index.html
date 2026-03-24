@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- reveal.js: local (Raspberry Pi) with CDN fallback (GitHub Pages) -->
+    <link rel="stylesheet" href="../reveal.js/dist/reveal.css"
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css'">
+    <link rel="stylesheet" href="../reveal.js/dist/theme/black.css"
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css'">
+    <link rel="stylesheet" href="../reveal.js/plugin/highlight/monokai.css"
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css'">
+    <style type="text/css">
+        .reveal section img {
+            border: none;
+            box-shadow: none;
+        }
+        /* prevent horizontal overflow in code blocks */
+        .reveal pre {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .reveal pre code {
+            font-size: 0.8em;
+            line-height: 1.4;
+            max-height: 440px;
+            overflow-x: hidden;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+    <title>Offline Fallback for a Mobile LoRaWAN Gateway</title>
+    <meta name="author" content="Jannis Lübbe">
+</head>
+
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- ==================== Title ==================== -->
+            <section>
+                <h3>Offline Fallback for a Mobile LoRaWAN Gateway</h3>
+                <p>Jannis Lübbe<br>
+                    <a href="https://github.com/jaluebbe"><svg width="32" height="32" viewBox="0 0 16 16">
+                            <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" fill="#fff"></path>
+                        </svg>&nbsp;jaluebbe</a>
+                    <br><a href="https://www.rosen-group.com/">ROSEN Group</a>
+                </p>
+                <p><a href="https://2025.pycon.de/">PyConDE &amp; PyData Darmstadt 2026</a></p>
+                <aside class="notes">
+                </aside>
+            </section>
+
+            <!-- ==================== Hook ==================== -->
+            <section>
+                <h3>LoRaWAN – what is it?</h3>
+                <ul>
+                    <li>Long Range Wide Area Network</li>
+                    <li>Operates at <b>868&nbsp;MHz</b> in Europe</li>
+                    <li>Long range, low power, low data rate</li>
+                    <li>Encrypted transmission</li>
+                </ul>
+                <aside class="notes">
+                    LoRaWAN operates at 868 MHz in Europe.
+                    Designed for long-range, low-power, low-data-rate applications.
+                    All messages are encrypted.
+                </aside>
+            </section>
+            <section>
+                <h3>Typical sensor nodes</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; text-align: center;">
+                    <div>
+                        <img src="img/lorawan_temperature_node.jpg">
+                        <div>Temperature</div>
+                    </div>
+                    <div>
+                        <img src="img/water_level_node.jpg">
+                        <div>Water level</div>
+                    </div>
+                    <div>
+                        <img src="img/gps_tracker_node.jpg">
+                        <div>GPS location</div>
+                    </div>
+                </div>
+                <aside class="notes">
+                    Battery life: temperature or water level sensors may last years.
+                    A GPS tracker may only last days, depending on the update rate.
+                </aside>
+            </section>
+            <section>
+                <h3>LoRaWAN architecture</h3>
+                <div style="display: grid; grid-template-columns: 0.9fr 2.1fr; gap: 0px; text-align: left; align-items: center;">
+                    <img src="img/lorawan_gateway.jpg"/>
+                    <div>
+                        <ul>
+                            <li>Gateway forwards raw frames to
+                                <a href="https://www.thethingsindustries.com/docs/concepts/ttn/">
+                                The&nbsp;Things&nbsp;Stack&nbsp;Sandbox</a>
+                            </li>
+                            <li>Decryption and decoding happen on the Network Server</li>
+                            <li>Cloud dependency is <b>structural</b></li>
+                        </ul>
+                    </div>
+                </div>
+                <aside class="notes">
+                    The gateway forwards raw frames and has no knowledge of the payload content.
+                    Decryption happens in the cloud. That structural dependency is what we address.
+                    Note: "TTN" on slides = The Things Stack Sandbox (TTSS), the free non-commercial tier.
+                </aside>
+            </section>
+
+            <!-- ==================== The approach ==================== -->
+            <section>
+                <h3>LoRaWAN data rate &amp; limits</h3>
+                <ul>
+                    <li>Up to <b>5.5 kbit/s</b> – roughly comparable to a fax machine &#x1F4E0; <em>(still indispensable in Germany)</em></li>
+                    <li class="fragment">Legal duty cycle limit: <b>1%</b> &rarr; max. 36 s/h on air</li>
+                    <li class="fragment">TTN fair use policy: <b>max. 30 s airtime per day</b></li>
+                </ul>
+                <aside class="notes">
+                    Airtime for a 21-byte frame (8 byte payload + 13 byte header):
+                    SF7:  ~56 ms  → ~535 messages/day
+                    SF9:  ~206 ms → ~145 messages/day
+                    SF12: ~1.5 s  → ~20 messages/day
+                </aside>
+            </section>
+            <section>
+                <h3>Sensor online, internet offline</h3>
+                <div style="display: grid; grid-template-columns: 1.5fr 1.5fr; gap: 0px; text-align: left; align-items: center;">
+                    <img src="img/flood_level_measurement.jpeg"/>
+                    <div>
+                        <ul>
+                            <li>Water is rising</li>
+                            <li>Internet is gone</li>
+                            <li>All data disappears into nowhere</li>
+                        </ul>
+                    </div>
+                </div>
+                <aside class="notes">
+                    The sensor keeps transmitting – water level data, reliably sent.
+                    But without internet, nobody receives it.
+                </aside>
+            </section>
+            <section>
+                <h3>The hybrid approach</h3>
+                <div style="display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 0px; text-align: left; align-items: center;">
+                    <img src="img/mobile_gateway.jpg">
+                    <ul>
+                        <li>Act as a TTN gateway</li>
+                        <li>Decode all own device messages locally</li>
+                        <li>No changes to devices</li>
+                        <li>No changes to TTN</li>
+                    </ul>
+                </div>
+                <p><a href="https://github.com/jaluebbe/ttn-message-interceptor">github.com/jaluebbe/ttn-message-interceptor</a></p>
+                <aside class="notes">
+                    gwmp_mux.py duplicates the UDP stream – one copy to TTN, one to our local collector.
+                    No changes to devices or TTN.
+                </aside>
+            </section>
+            <section>
+                <h3>UDP stream duplication</h3>
+                <pre><code class="language-text" style="font-size: 1.2em; white-space: pre;">lora_pkt_fwd (SPI)
+      |  UDP :1700
+ gwmp_mux.py  # duplicates uplink frames
+      |
+      +---> TTN cloud :1700
+      +---> localhost :1701
+                |
+      message_collector -> Redis -> message_handler</code></pre>
+                <aside class="notes">
+                    gwmp_mux.py listens on UDP port 1700 and forwards every uplink frame
+                    to both TTN and our local collector.
+                </aside>
+            </section>
+
+            <!-- ==================== Decoding walkthrough ==================== -->
+            <section>
+                <h3>Tracing a message</h3>
+                <p>The gateway receives an encrypted LoRaWAN frame:</p>
+                <table style="font-family: monospace; font-size: 0.75em; border-collapse: collapse; width: 100%; margin: 0.5em 0;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #aaa;">
+                            <th style="padding: 0.3em 0.6em;">MHDR</th>
+                            <th style="padding: 0.3em 0.6em;">DevAddr</th>
+                            <th style="padding: 0.3em 0.6em;">FCnt</th>
+                            <th style="padding: 0.3em 0.6em;">FPort</th>
+                            <th style="padding: 0.3em 0.6em;">Ciphertext</th>
+                            <th style="padding: 0.3em 0.6em;">MIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">40</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">A1B2C3D4</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">0001</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">01</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">fb9125ea0f5d4914</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">8752e7fd</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>Our interceptor picks this up in parallel to TTN.<br>
+                <em>Everything visible except the payload.</em></p>
+                <aside class="notes">
+                    The frame format is standardized – DevAddr, FCnt, FPort,
+                    MHDR (MAC Header) and MIC (Message Integrity Code)
+                    are all unencrypted and can be read without any keys.
+                    Everything visible except the payload.
+                    Our interceptor captures the frame alongside TTN and will decode it locally.
+                </aside>
+            </section>
+            <section>
+                <h3>LoRaWAN encryption</h3>
+                <ul>
+                    <li>Each device has its own <b>session keys</b> (AppSKey, NwkSKey)</li>
+                    <li>Without the keys, the payload is unreadable</li>
+                    <li>Keys are stored on the Network Server – fetch them via TTN API</li>
+                </ul>
+                <aside class="notes">
+                    Two keys per device: AppSKey for payload encryption, NwkSKey for
+                    integrity check (MIC). Both are stored on the TTN Network Server
+                    and fetched once via the API. Without them, the ciphertext in the
+                    frame is unreadable.
+                </aside>
+            </section>
+            <section>
+                <h3>Fetching session keys from TTN</h3>
+                <pre><code class="language-python" style="font-size: 0.8em;"># request_ttn_devices.py  (simplified)
+for app_id in application_ids:
+    for device in list_application_devices(session, app_id):
+        net_data = request_device_keys(session, app_id, device["device_id"])
+        app_data = request_app_device_data(session, app_id, device["device_id"])
+        store_device_session_in_db(
+            dev_eui    = net_data["ids"]["dev_eui"],
+            dev_addr   = net_data["session"]["dev_addr"],
+            app_s_key  = app_data["session"]["keys"]["app_s_key"]["key"],
+            nwk_s_key  = net_data["session"]["keys"]["f_nwk_s_int_key"]["key"],
+            ...
+        )</code></pre>
+                <aside class="notes">
+                    Two separate API calls per device: NwkSKey comes from the Network
+                    Server, AppSKey from the Application Server. Both are stored in
+                    SQLite and used for offline decryption. The script runs daily via
+                    cron to keep keys up to date.
+                </aside>
+            </section>
+            <section>
+                <h3>What about messages before the first key fetch?</h3>
+                <ul>
+                    <li>Undecoded messages are stored and reprocessed once keys are available</li>
+                    <li class="fragment">Requires at least one successful TTN connection per device</li>
+                    <li class="fragment">Configure devices to avoid unnecessary re-joins</li>
+                </ul>
+                <aside class="notes">
+                    reprocess_messages.py retries decoding – messages received before
+                    the first key fetch are not lost permanently.
+                    Key limitation: devices must have connected to TTN at least once.
+                    In practice: register devices before deployment, not during an incident.
+                    Brand new devices in a blackout scenario cannot onboard at all.
+
+                    OTAA re-join tip (e.g. Dragino PS-LB):
+                    AT+DDETECT=0 disables automatic re-join – device keeps its session
+                    indefinitely. For a manual re-join after a longer outage, a physical
+                    reset button press at the device is sufficient.
+                </aside>
+            </section>
+
+            <!-- ==================== Python calls JavaScript ==================== -->
+            <section>
+                <h3>Decryption at the gateway</h3>
+                <pre><code class="language-python"># message_processor.py
+info = requests.post(f"{BASE_URL}/info/hex",
+    json={"payload": "40d4c3b2a100010001fb9125ea0f5d49148752e7fd"}).json()
+# --> devAddr, fPort, fCnt, ciphertext
+
+session = get_latest_session_by_dev_addr(info["devAddr"])
+
+decrypted = requests.post(f"{BASE_URL}/decrypt/hex", json={
+    "payload":   raw_hex,
+    "app_s_key": session["app_s_key"],
+    "nwk_s_key": session["nwk_s_key"],
+}).json()
+# --> "f09f918bf09f8c8d"</code></pre>
+                <aside class="notes">
+                    The Node.js HTTP service uses the lora-packet library for MIC verification and AES decryption.
+                </aside>
+            </section>
+            <section>
+                <h3>The payload decoder problem</h3>
+                <ul>
+                    <li>Device payload decoders exist as <b>JavaScript</b> only</li>
+                    <li>Python has no access to JS libraries directly</li>
+                    <li>Options: rewrite in Python, call subprocess, or&hellip;</li>
+                </ul>
+                <aside class="notes">
+                    Rewriting decoders in Python was attempted – feasible for simple decoders,
+                    but too complex for real-world device decoders.
+                </aside>
+            </section>
+            <section>
+                <h3>Node.js HTTP service</h3>
+                <pre><code class="language-javascript">// nodejs/decoders_api.js  (key routes)
+app.post("/info/hex",    (req, res) => extractMessageInfo(req, res, "hex"));
+app.post("/decrypt/hex", (req, res) => decryptPayload(req, res, "hex"));
+app.post("/decode/hex",  (req, res) => decodePayload(req, res, "hex"));</code></pre>
+                <pre><code class="language-javascript">// decrypt uses lora-packet library
+const packet = lora_packet.fromWire(Buffer.from(payload, "hex"));
+lora_packet.verifyMIC(packet, NwkSKey);  // integrity check
+const decrypted = lora_packet.decrypt(packet, AppSKey, NwkSKey);</code></pre>
+                <aside class="notes">
+                </aside>
+            </section>
+            <section>
+                <h3>Why HTTP and not subprocess?</h3>
+                <ul>
+                    <li>Python and Node.js run independently</li>
+                    <li>Errors surface as HTTP status codes</li>
+                    <li>Node.js starts once, not per message</li>
+                </ul>
+                <aside class="notes">
+                </aside>
+            </section>
+
+            <!-- ==================== Result ==================== -->
+            <section>
+                <h3>Payload decoding</h3>
+                <pre><code class="language-javascript">// decoders/demo/hello_world.js
+function decodeUplink(input) {
+  return {
+    data:     { text: Buffer.from(input.bytes).toString("utf8") },
+    warnings: [],
+    errors:   []
+  };
+}
+module.exports = { decodeUplink };</code></pre>
+                <pre><code class="language-python">decoded = requests.post(f"{BASE_URL}/decode/hex", json={
+    "payload":     decrypted,
+    "application": session["application_id"],
+    "device":      session["device_id"],
+    "fPort":       info["fPort"],
+}).json()</code></pre>
+                <aside class="notes">
+                    The JS decoder is minimal – just converts raw bytes to UTF-8.
+                    Python receives a clean JSON response.
+                    The actual result will be revealed on the last slide.
+                </aside>
+            </section>
+
+            <!-- ==================== Session keys ==================== -->
+            <section>
+                <h3>Local data storage &amp; API</h3>
+                <ul>
+                    <li>Decoded messages stored in <b>SQLite</b></li>
+                    <li><b>FastAPI</b> serves the data on port&nbsp;8080</li>
+                    <li>Data stays accessible offline</li>
+                </ul>
+                <aside class="notes">
+                    The API is read-only – the gateway writes to SQLite, the API only reads from it.
+                </aside>
+            </section>
+
+
+            <section>
+                <div style="width:100%; height:500px; overflow:hidden;">
+                <svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; font-family: monospace; font-size: 13px;">
+                    <defs>
+                        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                            <polygon points="0 0, 8 3, 0 6" fill="#aaa"/>
+                        </marker>
+                    </defs>
+
+                    <!-- message_handler -->
+                    <rect x="240" y="10" width="160" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="320" y="32" text-anchor="middle" fill="#fff">message_handler</text>
+
+                    <!-- ttn_storage_fetcher -->
+                    <rect x="430" y="10" width="180" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="520" y="32" text-anchor="middle" fill="#fff">ttn_storage_fetcher</text>
+
+                    <!-- message_handler → gateway messages -->
+                    <line x1="320" y1="44" x2="320" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- ttn_storage_fetcher → TTN storage messages -->
+                    <line x1="520" y1="44" x2="520" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- SQLite dashed frame -->
+                    <rect x="220" y="100" width="410" height="74" rx="4" fill="none" stroke="#68d391" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+                    <!-- gateway messages box -->
+                    <rect x="240" y="120" width="160" height="34" rx="4" fill="none" stroke="#68d391" stroke-width="1.5"/>
+                    <text x="320" y="142" text-anchor="middle" fill="#68d391">gateway messages</text>
+
+                    <!-- TTN storage messages box -->
+                    <rect x="430" y="120" width="180" height="34" rx="4" fill="none" stroke="#68d391" stroke-width="1.5"/>
+                    <text x="520" y="142" text-anchor="middle" fill="#68d391">TTN storage messages</text>
+
+                    <!-- SQLite label -->
+                    <text x="222" y="96" text-anchor="start" fill="#68d391" font-size="11">SQLite</text>
+
+                    <!-- reprocess_messages box -->
+                    <rect x="5" y="120" width="170" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="90" y="142" text-anchor="middle" fill="#fff">reprocess_messages</text>
+
+                    <!-- reprocess ↔ gateway messages -->
+                    <line x1="175" y1="132" x2="238" y2="132" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="240" y1="142" x2="177" y2="142" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- gateway messages → FastAPI (vertical) -->
+                    <line x1="380" y1="154" x2="380" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- TTN storage → FastAPI (vertical) -->
+                    <line x1="460" y1="154" x2="460" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- FastAPI box (wide) -->
+                    <rect x="345" y="230" width="150" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="420" y="252" text-anchor="middle" fill="#fff">REST API :8080</text>
+
+                    <!-- FastAPI → Client -->
+                    <line x1="420" y1="264" x2="420" y2="328" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- Client box -->
+                    <rect x="345" y="330" width="150" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="420" y="352" text-anchor="middle" fill="#fff">Client</text>
+
+                </svg>
+                </div>
+                <aside class="notes">
+                    The API provides both the latest values and time series data for each sensor.
+                </aside>
+            </section>
+
+            <!-- ==================== Conclusion ==================== -->
+            <section>
+                <h3>Don't rewrite what already exists – orchestrate it.</h3>
+                <ul>
+                    <li><b>lora-packet</b> (JS) for LoRaWAN decryption</li>
+                    <li>Manufacturer decoders (JS) for payloads</li>
+                    <li><b>Python</b> for orchestration and data storage</li>
+                </ul>
+                <p><em>HTTP makes language boundaries irrelevant.</em></p>
+                <aside class="notes">
+                    lora-packet and the device decoders already exist and are well-maintained.
+                    Python connects the pieces.
+                </aside>
+            </section>
+            <section>
+                <h3>Thank you for your attention</h3>
+                <p><em>By the way – this was in that payload:</em></p>
+                <p style="font-size: 2em; margin: 0.2em 0;">
+                    &#x1F44B;&#x1F30D;
+                </p>
+                <p>
+                    <a href="https://github.com/jaluebbe/ttn-message-interceptor">github.com/jaluebbe/ttn-message-interceptor</a>
+                </p>
+                <aside class="notes">
+                    The complete implementation is available on GitHub under the GPL-3.0 license.
+                </aside>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- reveal.js: local (Raspberry Pi) with CDN fallback (GitHub Pages) -->
+    <script>
+        (function () {
+            var CDN_BASE = 'https://cdn.jsdelivr.net/npm/reveal.js@5';
+            var LOCAL_BASE = '../reveal.js';
+
+            function loadScript(src, onload) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.onload = onload;
+                s.onerror = function () {
+                    var f = document.createElement('script');
+                    f.src = src.replace(LOCAL_BASE, CDN_BASE);
+                    f.onload = onload;
+                    document.head.appendChild(f);
+                };
+                document.head.appendChild(s);
+            }
+
+            loadScript(LOCAL_BASE + '/dist/reveal.js', function () {
+                loadScript(LOCAL_BASE + '/plugin/highlight/highlight.js', function () {
+                    loadScript(LOCAL_BASE + '/plugin/notes/notes.js', function () {
+                        Reveal.initialize({
+                            hash: true,
+                            plugins: [RevealHighlight, RevealNotes],
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+
+</html>
