@@ -227,7 +227,7 @@
             </section>
             <section>
                 <h3>Fetching session keys from TTN</h3>
-                <pre><code class="language-python" style="font-size: 0.8em;"># request_ttn_devices.py  (simplified)
+                <pre><code class="language-python" style="font-size: 0.8em;"># request_ttn_devices.py (simplified)
 for app_id in application_ids:
     for device in list_application_devices(session, app_id):
         net_data = request_device_keys(session, app_id, device["device_id"])
