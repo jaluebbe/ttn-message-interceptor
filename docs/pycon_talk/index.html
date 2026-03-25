@@ -196,8 +196,8 @@
                             <td style="padding: 0.3em 0.6em; text-align: center;">A1B2C3D4</td>
                             <td style="padding: 0.3em 0.6em; text-align: center;">0002</td>
                             <td style="padding: 0.3em 0.6em; text-align: center;">01</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">fb9125ea0f5d4914</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">8752e7fd</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">2c46e592c0b8c0642</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">4fc865e</td>
                         </tr>
                     </tbody>
                 </table>
@@ -271,7 +271,7 @@ for app_id in application_ids:
             <section>
                 <h3>Decryption at the gateway</h3>
                 <pre><code class="language-python"># message_processor.py
-raw_hex = "40d4c3b2a100010001fb9125ea0f5d49148752e7fd"
+raw_hex = "40d4c3b2a1000200012c46e592c0b8c06424fc865e"
 info = requests.post(f"{BASE_URL}/info/hex",
     json={"payload": raw_hex}).json()
 # --> devAddr, fPort, fCnt, frmPayload (encrypted)
