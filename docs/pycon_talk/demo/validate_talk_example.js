@@ -38,7 +38,7 @@ async function main() {
         {
             MType:   "Unconfirmed Data Up",
             DevAddr: Buffer.from("A1B2C3D4", "hex"),
-            FCnt:    1,
+            FCnt:    2,
             FPort:   1,
             payload: PAYLOAD,
         },
