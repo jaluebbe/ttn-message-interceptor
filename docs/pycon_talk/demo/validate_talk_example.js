@@ -52,10 +52,13 @@ async function main() {
     // ── Step 1: Parse frame via /info/hex ────────────────────────────────────
     console.log("=== Step 1: Parse frame (/info/hex) ===");
     const info = await post("/info/hex", { payload: raw_hex });
-    console.log("DevAddr:", info.devAddr);
-    console.log("FCnt:   ", info.fCnt);
-    console.log("FPort:  ", info.fPort);
-    console.log("MType:  ", info.mType);
+    console.log("MType:     ", info.mType);
+    console.log("DevAddr:   ", info.devAddr);
+    console.log("FCtrl:     ", info.fCtrl);
+    console.log("FCnt:      ", info.fCnt);
+    console.log("FPort:     ", info.fPort);
+    console.log("MIC:       ", info.mic);
+    console.log("FRMPayload:", info.frmPayload);
     console.log();
 
     // ── Step 2: Decrypt via /decrypt/hex ─────────────────────────────────────
