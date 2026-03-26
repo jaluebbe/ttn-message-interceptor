@@ -280,37 +280,16 @@ for app_id in application_ids:
                 </aside>
             </section>
             <section>
-                <h3>Decryption at the gateway</h3>
-                <pre><code class="language-python"># message_processor.py
-raw_hex = "40" "d4c3b2a1" "00" "0200" "01" "2c46e592c0b8c064" "24fc865e"
-#          MH   DevAddr    FC   FCnt   FP   frmPayload         MIC
-
-info = requests.post(f"{BASE_URL}/info/hex",
-    json={"payload": raw_hex}).json()
-# --> devAddr, fPort, fCnt, frmPayload (encrypted)
-
-session = get_latest_session_by_dev_addr(info["devAddr"])
-# --> application_id, device_id, app_s_key, nwk_s_key
-
-decrypted = requests.post(f"{BASE_URL}/decrypt/hex", json={
-    "payload":   raw_hex,
-    "app_s_key": session["app_s_key"],  # payload decryption
-    "nwk_s_key": session["nwk_s_key"],  # MIC verification
-}).json()
-# --> "f09f918bf09f8c8d"</code></pre>
-                <aside class="notes">
-                    lora-packet handles MIC verification (NwkSKey) and AES decryption (AppSKey).
-                    DevAddr is little-endian on the wire – lora-packet converts it to big-endian for display.
-                </aside>
-            </section>
-            <section>
-                <h3>The payload decoder problem</h3>
+                <h3>Python meets JavaScript</h3>
                 <ul>
+                    <li>LoRaWAN decryption relies on <b>lora-packet</b> (JS)</li>
                     <li>Device payload decoders exist as <b>JavaScript</b> only</li>
-                    <li>Python has no access to JS libraries directly</li>
-                    <li>Options: rewrite in Python, call subprocess, or&hellip;</li>
+                    <li>Python has no direct access to JS libraries</li>
+                    <li>Solution: Node.js HTTP service</li>
                 </ul>
                 <aside class="notes">
+                    Two reasons to bridge Python and JavaScript:
+                    lora-packet for decryption and community device decoders for payload parsing.
                     Rewriting decoders in Python was attempted – feasible for simple decoders,
                     but too complex for real-world device decoders.
                 </aside>
@@ -337,8 +316,30 @@ app.listen(3000);</code></pre>
                     The three routes serve the three steps in message_processor.py.
 
                     Why not subprocess? Node.js starts once and stays running; errors surface as HTTP status codes.
-                    Rewriting decoders in Python was attempted – feasible for simple decoders,
-                    but too complex for real-world device decoders.
+                </aside>
+            </section>
+            <section>
+                <h3>Decryption at the gateway</h3>
+                <pre><code class="language-python"># message_processor.py
+raw_hex = "40" "d4c3b2a1" "00" "0200" "01" "2c46e592c0b8c064" "24fc865e"
+#          MH   DevAddr    FC   FCnt   FP   frmPayload         MIC
+
+info = requests.post(f"{BASE_URL}/info/hex",
+    json={"payload": raw_hex}).json()
+# --> devAddr, fPort, fCnt, frmPayload (encrypted)
+
+session = get_latest_session_by_dev_addr(info["devAddr"])
+# --> application_id, device_id, app_s_key, nwk_s_key
+
+decrypted = requests.post(f"{BASE_URL}/decrypt/hex", json={
+    "payload":   raw_hex,
+    "app_s_key": session["app_s_key"],  # payload decryption
+    "nwk_s_key": session["nwk_s_key"],  # MIC verification
+}).json()
+# --> "f09f918bf09f8c8d"</code></pre>
+                <aside class="notes">
+                    lora-packet handles MIC verification (NwkSKey) and AES decryption (AppSKey).
+                    DevAddr is little-endian on the wire – lora-packet converts it to big-endian for display.
                 </aside>
             </section>
             <section>
