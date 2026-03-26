@@ -63,8 +63,8 @@
                 </ul>
                 <aside class="notes">
                     LoRaWAN operates at 868 MHz in Europe.
-                    Designed for long-range, low-power, low-data-rate applications.
-                    All messages are encrypted.
+                    Long range means up to a few kilometres depending on the environment.
+                    Designed for low-power, low-data-rate applications with encrypted transmission.
                 </aside>
             </section>
             <section>
@@ -126,6 +126,70 @@
                 </aside>
             </section>
             <section>
+                <h3>A LoRaWAN message</h3>
+                <p>The gateway receives an encrypted LoRaWAN frame:</p>
+                <table style="font-family: monospace; font-size: 0.75em; border-collapse: collapse; width: 100%; margin: 0.5em 0;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #aaa;">
+                            <th style="padding: 0.3em 0.6em;">MHDR</th>
+                            <th style="padding: 0.3em 0.6em;">DevAddr</th>
+                            <th style="padding: 0.3em 0.6em;">FCnt</th>
+                            <th style="padding: 0.3em 0.6em;">FPort</th>
+                            <th style="padding: 0.3em 0.6em;">frmPayload</th>
+                            <th style="padding: 0.3em 0.6em;">MIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">40</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">d4c3b2a1</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">0200</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">01</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">2c46e592c0b8c064</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">24fc865e</td>
+                        </tr>
+                        <tr style="color: #aaa; font-style: italic;">
+                            <td></td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">A1B2C3D4</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">2</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>The gateway forwards the frame to TTN as-is.<br>
+                <em>Everything visible except the frame payload.</em></p>
+                <aside class="notes">
+                    All fields except frmPayload are unencrypted and readable without any keys.
+                    The gateway forwards the frame unchanged to TTN.
+                    DevAddr and FCnt are transmitted little-endian on the wire
+                    (d4c3b2a1 → A1B2C3D4, 0200 → 2).
+                </aside>
+            </section>
+            <section>
+                <h3>From gateway to application</h3>
+                <ul>
+                    <li>TTN decrypts the payload and routes it by <b>application ID</b> and <b>device ID</b></li>
+                    <li>Each device has a JavaScript decoder in TTN</li>
+                </ul>
+                <pre><code class="language-javascript">// TTN decoder for my_application / my_device
+function decodeUplink(input) {
+  return {
+    data:     { bytes: input.bytes },
+    warnings: [],
+    errors:   []
+  };
+}
+module.exports = { decodeUplink };</code></pre>
+                <aside class="notes">
+                    TTN decrypts the payload using the session keys stored on the Network Server.
+                    The decoded result is routed to the correct application using application ID
+                    and device ID. Each device can have its own JavaScript decoder –
+                    this one simply passes through the raw bytes.
+                </aside>
+            </section>
+            <section>
                 <h3>Sensor online, internet offline</h3>
                 <div style="display: grid; grid-template-columns: 1.5fr 1.5fr; gap: 0px; text-align: left; align-items: center;">
                     <img src="img/flood_level_measurement.jpeg"/>
@@ -155,8 +219,9 @@
                 </div>
                 <p><a href="https://github.com/jaluebbe/ttn-message-interceptor">github.com/jaluebbe/ttn-message-interceptor</a></p>
                 <aside class="notes">
-                    gwmp_mux.py duplicates the UDP stream – one copy to TTN, one to our local collector.
-                    No changes to devices or TTN.
+                    Hardware: Raspberry Pi with LoRaWAN concentrator board and antenna,
+                    LTE modem/stick for internet, GPS module for connectivity and system time
+                    (the Pi does not retain time after a power outage).
                 </aside>
             </section>
             <section>
@@ -169,48 +234,16 @@
       +---> localhost :1701
                 |
       message_collector -> Redis -> message_handler</code></pre>
+                <p><em>Every frame is also captured locally for decryption.</em></p>
                 <aside class="notes">
                     gwmp_mux.py listens on UDP port 1700 and forwards every uplink frame
                     to both TTN and our local collector.
+                    Local decryption only works for known devices – session keys must
+                    have been fetched from TTN at least once before the outage.
                 </aside>
             </section>
 
             <!-- ==================== Decoding walkthrough ==================== -->
-            <section>
-                <h3>Tracing a message</h3>
-                <p>The gateway receives an encrypted LoRaWAN frame:</p>
-                <table style="font-family: monospace; font-size: 0.75em; border-collapse: collapse; width: 100%; margin: 0.5em 0;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid #aaa;">
-                            <th style="padding: 0.3em 0.6em;">MHDR</th>
-                            <th style="padding: 0.3em 0.6em;">DevAddr</th>
-                            <th style="padding: 0.3em 0.6em;">FCnt</th>
-                            <th style="padding: 0.3em 0.6em;">FPort</th>
-                            <th style="padding: 0.3em 0.6em;">FRMPayload</th>
-                            <th style="padding: 0.3em 0.6em;">MIC</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">40</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">A1B2C3D4</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">0002</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">01</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">2c46e592c0b8c0642</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">4fc865e</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <p>Our interceptor picks this up in parallel to TTN.<br>
-                <em>Everything visible except the payload.</em></p>
-                <aside class="notes">
-                    The frame format is standardized – DevAddr, FCnt, FPort,
-                    MHDR (MAC Header) and MIC (Message Integrity Code)
-                    are all unencrypted and can be read without any keys.
-                    Everything visible except the payload.
-                    Our interceptor captures the frame alongside TTN and will decode it locally.
-                </aside>
-            </section>
             <section>
                 <h3>LoRaWAN encryption</h3>
                 <ul>
@@ -247,31 +280,11 @@ for app_id in application_ids:
                 </aside>
             </section>
             <section>
-                <h3>What about messages before the first key fetch?</h3>
-                <ul>
-                    <li>Undecoded messages are stored and reprocessed once keys are available</li>
-                    <li class="fragment">Requires at least one successful TTN connection per device</li>
-                    <li class="fragment">Configure devices to avoid unnecessary re-joins</li>
-                </ul>
-                <aside class="notes">
-                    reprocess_messages.py retries decoding – messages received before
-                    the first key fetch are not lost permanently.
-                    Key limitation: devices must have connected to TTN at least once.
-                    In practice: register devices before deployment, not during an incident.
-                    Brand new devices in a blackout scenario cannot onboard at all.
-
-                    OTAA re-join tip (e.g. Dragino PS-LB):
-                    AT+DDETECT=0 disables automatic re-join – device keeps its session
-                    indefinitely. For a manual re-join after a longer outage, a physical
-                    reset button press at the device is sufficient.
-                </aside>
-            </section>
-
-            <!-- ==================== Python calls JavaScript ==================== -->
-            <section>
                 <h3>Decryption at the gateway</h3>
                 <pre><code class="language-python"># message_processor.py
-raw_hex = "40d4c3b2a1000200012c46e592c0b8c06424fc865e"
+raw_hex = "40" "d4c3b2a1" "00" "0200" "01" "2c46e592c0b8c064" "24fc865e"
+#          MH   DevAddr    FC   FCnt   FP   frmPayload         MIC
+
 info = requests.post(f"{BASE_URL}/info/hex",
     json={"payload": raw_hex}).json()
 # --> devAddr, fPort, fCnt, frmPayload (encrypted)
@@ -281,12 +294,13 @@ session = get_latest_session_by_dev_addr(info["devAddr"])
 
 decrypted = requests.post(f"{BASE_URL}/decrypt/hex", json={
     "payload":   raw_hex,
-    "app_s_key": session["app_s_key"],
-    "nwk_s_key": session["nwk_s_key"],
+    "app_s_key": session["app_s_key"],  # payload decryption
+    "nwk_s_key": session["nwk_s_key"],  # MIC verification
 }).json()
 # --> "f09f918bf09f8c8d"</code></pre>
                 <aside class="notes">
-                    The Node.js HTTP service uses the lora-packet library for MIC verification and AES decryption.
+                    lora-packet handles MIC verification (NwkSKey) and AES decryption (AppSKey).
+                    DevAddr is little-endian on the wire – lora-packet converts it to big-endian for display.
                 </aside>
             </section>
             <section>
@@ -303,29 +317,30 @@ decrypted = requests.post(f"{BASE_URL}/decrypt/hex", json={
             </section>
             <section>
                 <h3>Node.js HTTP service</h3>
-                <pre><code class="language-javascript">// nodejs/decoders_api.js  (key routes)
+                <pre><code class="language-javascript">// nodejs/decoders_api.js
+const express = require("express");
+const lora_packet = require("lora-packet");
+
+const app = express();
+app.use(express.json());
+
+// ... extractMessageInfo, decryptPayload, decodePayload
+
 app.post("/info/hex",    (req, res) => extractMessageInfo(req, res, "hex"));
 app.post("/decrypt/hex", (req, res) => decryptPayload(req, res, "hex"));
-app.post("/decode/hex",  (req, res) => decodePayload(req, res, "hex"));</code></pre>
-                <pre><code class="language-javascript">// decrypt uses lora-packet library
-const packet = lora_packet.fromWire(Buffer.from(payload, "hex"));
-lora_packet.verifyMIC(packet, NwkSKey);  // integrity check
-const decrypted = lora_packet.decrypt(packet, AppSKey, NwkSKey);</code></pre>
-                <aside class="notes">
-                </aside>
-            </section>
-            <section>
-                <h3>Why HTTP and not subprocess?</h3>
-                <ul>
-                    <li>Python and Node.js run independently</li>
-                    <li>Errors surface as HTTP status codes</li>
-                    <li>Node.js starts once, not per message</li>
-                </ul>
-                <aside class="notes">
-                </aside>
-            </section>
+app.post("/decode/hex",  (req, res) => decodePayload(req, res, "hex"));
 
-            <!-- ==================== Result ==================== -->
+app.listen(3000);</code></pre>
+                <aside class="notes">
+                    Explicit JSON middleware (express.json()) is required to parse request bodies – FastAPI handles this automatically.
+                    lora-packet provides the LoRaWAN crypto operations.
+                    The three routes serve the three steps in message_processor.py.
+
+                    Why not subprocess? Node.js starts once and stays running; errors surface as HTTP status codes.
+                    Rewriting decoders in Python was attempted – feasible for simple decoders,
+                    but too complex for real-world device decoders.
+                </aside>
+            </section>
             <section>
                 <h3>Payload decoding</h3>
                 <pre><code class="language-javascript">// decoders/demo/hello_world.js
@@ -338,15 +353,16 @@ function decodeUplink(input) {
 }
 module.exports = { decodeUplink };</code></pre>
                 <pre><code class="language-python">decoded = requests.post(f"{BASE_URL}/decode/hex", json={
-    "payload":     decrypted,
-    "application": session["application_id"],
-    "device":      session["device_id"],
-    "fPort":       info["fPort"],
+    "payload":     decrypted,                  # "f09f918bf09f8c8d"
+    "application": session["application_id"],  # "demo"
+    "device":      session["device_id"],       # "hello_world"
+    "fPort":       info["fPort"],              # 1
 }).json()</code></pre>
                 <aside class="notes">
                     The JS decoder is minimal – just converts raw bytes to UTF-8.
                     Python receives a clean JSON response.
                     The actual result will be revealed on the last slide.
+                    The Python equivalent: bytes.fromhex("f09f918bf09f8c8d").decode("utf-8")  # 👋🌍
                 </aside>
             </section>
 
@@ -373,67 +389,176 @@ module.exports = { decodeUplink };</code></pre>
                         </marker>
                     </defs>
 
-                    <!-- message_handler -->
-                    <rect x="240" y="10" width="160" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
-                    <text x="320" y="32" text-anchor="middle" fill="#fff">message_handler</text>
+                    <!-- Top row -->
+                    <rect x="13" y="10" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="100" y="32" text-anchor="middle" fill="#fff">request_ttn_devices</text>
 
-                    <!-- ttn_storage_fetcher -->
-                    <rect x="430" y="10" width="180" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
-                    <text x="520" y="32" text-anchor="middle" fill="#fff">ttn_storage_fetcher</text>
+                    <rect x="198" y="10" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="285" y="32" text-anchor="middle" fill="#fff">message_handler</text>
 
-                    <!-- message_handler → gateway messages -->
-                    <line x1="320" y1="44" x2="320" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <rect x="383" y="10" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="470" y="32" text-anchor="middle" fill="#fff">ttn_storage_fetcher</text>
 
-                    <!-- ttn_storage_fetcher → TTN storage messages -->
-                    <line x1="520" y1="44" x2="520" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <!-- Top row → SQLite boxes -->
+                    <line x1="100" y1="44" x2="100" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="285" y1="44" x2="285" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="470" y1="44" x2="470" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
 
                     <!-- SQLite dashed frame -->
-                    <rect x="220" y="100" width="410" height="74" rx="4" fill="none" stroke="#68d391" stroke-width="1.5" stroke-dasharray="6,4"/>
+                    <rect x="5" y="103" width="560" height="64" rx="4" fill="none" stroke="#68d391" stroke-width="1.5" stroke-dasharray="6,4"/>
+                    <text x="8" y="99" text-anchor="start" fill="#68d391" font-size="11">SQLite</text>
 
-                    <!-- gateway messages box -->
-                    <rect x="240" y="120" width="160" height="34" rx="4" fill="none" stroke="#68d391" stroke-width="1.5"/>
-                    <text x="320" y="142" text-anchor="middle" fill="#68d391">gateway messages</text>
+                    <!-- Second row -->
+                    <rect x="13" y="118" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="100" y="140" text-anchor="middle" fill="#fff">session keys</text>
 
-                    <!-- TTN storage messages box -->
-                    <rect x="430" y="120" width="180" height="34" rx="4" fill="none" stroke="#68d391" stroke-width="1.5"/>
-                    <text x="520" y="142" text-anchor="middle" fill="#68d391">TTN storage messages</text>
+                    <rect x="198" y="118" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="285" y="140" text-anchor="middle" fill="#fff">gateway messages</text>
 
-                    <!-- SQLite label -->
-                    <text x="222" y="96" text-anchor="start" fill="#68d391" font-size="11">SQLite</text>
+                    <rect x="383" y="118" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="470" y="140" text-anchor="middle" fill="#fff">TTN storage messages</text>
 
                     <!-- reprocess_messages box -->
-                    <rect x="5" y="120" width="170" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
-                    <text x="90" y="142" text-anchor="middle" fill="#fff">reprocess_messages</text>
+                    <rect x="105" y="230" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="192" y="252" text-anchor="middle" fill="#fff">reprocess_messages</text>
 
-                    <!-- reprocess ↔ gateway messages -->
-                    <line x1="175" y1="132" x2="238" y2="132" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
-                    <line x1="240" y1="142" x2="177" y2="142" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
-
-                    <!-- gateway messages → FastAPI (vertical) -->
-                    <line x1="380" y1="154" x2="380" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
-
-                    <!-- TTN storage → FastAPI (vertical) -->
-                    <line x1="460" y1="154" x2="460" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
-
-                    <!-- FastAPI box (wide) -->
-                    <rect x="345" y="230" width="150" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
-                    <text x="420" y="252" text-anchor="middle" fill="#fff">REST API :8080</text>
-
-                    <!-- FastAPI → Client -->
-                    <line x1="420" y1="264" x2="420" y2="328" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <!-- REST API box -->
+                    <rect x="297" y="230" width="160" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="377" y="252" text-anchor="middle" fill="#fff">REST API :8080</text>
 
                     <!-- Client box -->
-                    <rect x="345" y="330" width="150" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
-                    <text x="420" y="352" text-anchor="middle" fill="#fff">Client</text>
+                    <rect x="297" y="320" width="160" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="377" y="342" text-anchor="middle" fill="#fff">Client</text>
+
+                    <!-- session keys top → message_handler bottom (L-shaped) -->
+                    <line x1="158" y1="118" x2="158" y2="80" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="158" y1="80" x2="256" y2="80" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="256" y1="80" x2="256" y2="44" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- session keys → reprocess (straight down) -->
+                    <line x1="158" y1="152" x2="158" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- gateway messages ↔ reprocess (parallel arrows) -->
+                    <line x1="235" y1="152" x2="235" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="245" y1="230" x2="245" y2="152" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- gateway messages → REST API (L-shaped) -->
+                    <line x1="314" y1="152" x2="314" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="314" y1="200" x2="377" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="377" y1="200" x2="377" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- TTN storage → REST API (L-shaped) -->
+                    <line x1="441" y1="152" x2="441" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="441" y1="200" x2="377" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="377" y1="200" x2="377" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- REST API → Client -->
+                    <line x1="377" y1="264" x2="377" y2="318" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
 
                 </svg>
                 </div>
                 <aside class="notes">
                     The API provides both the latest values and time series data for each sensor.
+
+                    Messages received before session keys were fetched are stored and reprocessed
+                    once keys become available – they are not lost permanently.
                 </aside>
             </section>
+            <section>
+                <div style="width:100%; height:500px; overflow:hidden;">
+                <svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; font-family: monospace; font-size: 13px;">
+                    <defs>
+                        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                            <polygon points="0 0, 8 3, 0 6" fill="#aaa"/>
+                        </marker>
+                        <marker id="arr-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                            <polygon points="0 0, 8 3, 0 6" fill="#e05252"/>
+                        </marker>
+                    </defs>
 
+                    <!-- Top row -->
+                    <rect x="13" y="10" width="175" height="34" rx="4" fill="none" stroke="#e05252" stroke-width="1.5"/>
+                    <text x="100" y="32" text-anchor="middle" fill="#e05252">request_ttn_devices</text>
+
+                    <rect x="198" y="10" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="285" y="32" text-anchor="middle" fill="#fff">message_handler</text>
+
+                    <rect x="383" y="10" width="175" height="34" rx="4" fill="none" stroke="#e05252" stroke-width="1.5"/>
+                    <text x="470" y="32" text-anchor="middle" fill="#e05252">ttn_storage_fetcher</text>
+
+                    <!-- Top row → SQLite boxes -->
+                    <line x1="100" y1="44" x2="100" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="285" y1="44" x2="285" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="470" y1="44" x2="470" y2="118" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- SQLite dashed frame -->
+                    <rect x="5" y="103" width="560" height="64" rx="4" fill="none" stroke="#68d391" stroke-width="1.5" stroke-dasharray="6,4"/>
+                    <text x="8" y="99" text-anchor="start" fill="#68d391" font-size="11">SQLite</text>
+
+                    <!-- Second row -->
+                    <rect x="13" y="118" width="175" height="34" rx="4" fill="none" stroke="#6ab0e0" stroke-width="1.5"/>
+                    <text x="100" y="140" text-anchor="middle" fill="#6ab0e0">session keys</text>
+
+                    <rect x="198" y="118" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="285" y="140" text-anchor="middle" fill="#fff">gateway messages</text>
+
+                    <rect x="383" y="118" width="175" height="34" rx="4" fill="none" stroke="#6ab0e0" stroke-width="1.5"/>
+                    <text x="470" y="140" text-anchor="middle" fill="#6ab0e0">TTN storage messages</text>
+
+                    <!-- reprocess_messages box -->
+                    <rect x="105" y="230" width="175" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="192" y="252" text-anchor="middle" fill="#fff">reprocess_messages</text>
+
+                    <!-- REST API box -->
+                    <rect x="297" y="230" width="160" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="377" y="252" text-anchor="middle" fill="#fff">REST API :8080</text>
+
+                    <!-- Client box -->
+                    <rect x="297" y="320" width="160" height="34" rx="4" fill="none" stroke="#aaa" stroke-width="1.5"/>
+                    <text x="377" y="342" text-anchor="middle" fill="#fff">Client</text>
+
+                    <!-- session keys top → message_handler bottom (red L-shaped) -->
+                    <line x1="158" y1="118" x2="158" y2="80" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="158" y1="80" x2="256" y2="80" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="256" y1="80" x2="256" y2="44" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- session keys → reprocess (straight down) -->
+                    <line x1="158" y1="152" x2="158" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- gateway messages ↔ reprocess (parallel arrows) -->
+                    <line x1="235" y1="152" x2="235" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="245" y1="230" x2="245" y2="152" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- gateway messages → REST API (L-shaped) -->
+                    <line x1="314" y1="152" x2="314" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="314" y1="200" x2="377" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="377" y1="200" x2="377" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- TTN storage → REST API (L-shaped) -->
+                    <line x1="441" y1="152" x2="441" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="441" y1="200" x2="377" y2="200" stroke="#aaa" stroke-width="1.5"/>
+                    <line x1="377" y1="200" x2="377" y2="228" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                    <!-- REST API → Client -->
+                    <line x1="377" y1="264" x2="377" y2="318" stroke="#aaa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+                </svg>
+                </div>
+                <aside class="notes">
+                    Red: stopped – no internet connection to TTN.
+                    Blue: frozen – last known state, no updates.
+                    White: fully operational – local processing continues.
+
+                    Devices must have connected to TTN at least once before a blackout.
+                    Register devices before deployment, not during an incident.
+
+                    OTAA re-join tip (e.g. Dragino PS-LB):
+                    AT+DDETECT=0 disables automatic re-join – device keeps its session
+                    indefinitely. For a manual re-join, a physical reset button press suffices.
+                </aside>
+            </section>
             <!-- ==================== Conclusion ==================== -->
+            <!-- Option B: white boxes + session database -->
             <section>
                 <h3>Don't rewrite what already exists – orchestrate it.</h3>
                 <ul>
@@ -448,12 +573,12 @@ module.exports = { decodeUplink };</code></pre>
                 </aside>
             </section>
             <section>
-                <h3>Thank you for your attention</h3>
                 <p><em>By the way – this was in that payload:</em></p>
-                <p style="font-size: 2em; margin: 0.2em 0;">
+                <p style="font-size: 2em; margin: 0.4em 0 0.6em 0;">
                     &#x1F44B;&#x1F30D;
                 </p>
-                <p>
+                <h3>Thank you for your attention!</h3>
+                <p style="margin-top: 0.6em;">
                     <a href="https://github.com/jaluebbe/ttn-message-interceptor">github.com/jaluebbe/ttn-message-interceptor</a>
                 </p>
                 <aside class="notes">
