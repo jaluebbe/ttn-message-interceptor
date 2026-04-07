@@ -344,6 +344,12 @@ decrypted = requests.post(f"{BASE_URL}/decrypt/hex", json={
             </section>
             <section>
                 <h3>Payload decoding</h3>
+                <pre><code class="language-python">decoded = requests.post(f"{BASE_URL}/decode/hex", json={
+    "payload":     decrypted,                  # "f09f918bf09f8c8d"
+    "application": session["application_id"],  # "demo"
+    "device":      session["device_id"],       # "hello_world"
+    "fPort":       info["fPort"],              # 1
+}).json()</code></pre>
                 <pre><code class="language-javascript">// decoders/demo/hello_world.js
 function decodeUplink(input) {
   return {
@@ -353,12 +359,6 @@ function decodeUplink(input) {
   };
 }
 module.exports = { decodeUplink };</code></pre>
-                <pre><code class="language-python">decoded = requests.post(f"{BASE_URL}/decode/hex", json={
-    "payload":     decrypted,                  # "f09f918bf09f8c8d"
-    "application": session["application_id"],  # "demo"
-    "device":      session["device_id"],       # "hello_world"
-    "fPort":       info["fPort"],              # 1
-}).json()</code></pre>
                 <aside class="notes">
                     The JS decoder is minimal – just converts raw bytes to UTF-8.
                     Python receives a clean JSON response.
