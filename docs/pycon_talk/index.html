@@ -52,6 +52,12 @@
                 </aside>
             </section>
             <section>
+                <img src="img/lorawan_illustration_sensors_only.svg" 
+                    style="width:100%; height:100%; object-fit:contain;">
+                <aside class="notes">
+                </aside>
+            </section>
+            <section>
                 <h3>Typical sensor nodes</h3>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; text-align: center;">
                     <div>
@@ -70,6 +76,41 @@
                 <aside class="notes">
                     Battery life: temperature or water level sensors may last years.
                     A GPS tracker may only last days, depending on the update rate.
+                </aside>
+            </section>
+            <section>
+                <img src="img/lorawan_illustration_normal_operation.svg" 
+                    style="width:100%; height:100%; object-fit:contain;">
+                <aside class="notes">
+                </aside>
+            </section>
+            <section>
+                <h3>LoRaWAN – what is it?</h3>
+                <ul>
+                    <li>Long Range Wide Area Network</li>
+                    <li>Operates at <b>868&nbsp;MHz</b> in Europe</li>
+                    <li>Long range, low power, low data rate</li>
+                    <li>Message based</li>
+                    <li>Encrypted transmission</li>
+                </ul>
+                <aside class="notes">
+                    LoRaWAN operates at 868 MHz in Europe.
+                    Long range means up to a few kilometres depending on the environment.
+                    Designed for low-power, low-data-rate applications with encrypted transmission.
+                </aside>
+            </section>
+            <section>
+                <h3>LoRaWAN data rate &amp; limits</h3>
+                <ul>
+                    <li>Up to <b>5.5 kbit/s</b> – roughly comparable to a fax machine &#x1F4E0; <em>(still indispensable in Germany)</em></li>
+                    <li class="fragment" data-fragment-index="1">Legal duty cycle limit: <b>1%</b> &rarr; max. 36 s/h on air</li>
+                    <li class="fragment" data-fragment-index="1">TTN fair use policy: <b>max. 30 s airtime per day</b></li>
+                </ul>
+                <aside class="notes">
+                    Airtime for a 21-byte frame (8 byte payload + 13 byte header):
+                    SF7:  ~56 ms  → ~535 messages/day
+                    SF9:  ~206 ms → ~145 messages/day
+                    SF12: ~1.5 s  → ~20 messages/day
                 </aside>
             </section>
             <section>
@@ -136,32 +177,9 @@ module.exports = { decodeUplink };</code></pre>
                 </aside>
             </section>
             <section>
-                <h3>LoRaWAN – what is it?</h3>
-                <ul>
-                    <li>Long Range Wide Area Network</li>
-                    <li>Operates at <b>868&nbsp;MHz</b> in Europe</li>
-                    <li>Long range, low power, low data rate</li>
-                    <li>Message based</li>
-                    <li>Encrypted transmission</li>
-                </ul>
+                <img src="img/lorawan_illustration_blackout_operation.svg" 
+                    style="width:100%; height:100%; object-fit:contain;">
                 <aside class="notes">
-                    LoRaWAN operates at 868 MHz in Europe.
-                    Long range means up to a few kilometres depending on the environment.
-                    Designed for low-power, low-data-rate applications with encrypted transmission.
-                </aside>
-            </section>
-            <section>
-                <h3>LoRaWAN data rate &amp; limits</h3>
-                <ul>
-                    <li>Up to <b>5.5 kbit/s</b> – roughly comparable to a fax machine &#x1F4E0; <em>(still indispensable in Germany)</em></li>
-                    <li class="fragment" data-fragment-index="1">Legal duty cycle limit: <b>1%</b> &rarr; max. 36 s/h on air</li>
-                    <li class="fragment" data-fragment-index="1">TTN fair use policy: <b>max. 30 s airtime per day</b></li>
-                </ul>
-                <aside class="notes">
-                    Airtime for a 21-byte frame (8 byte payload + 13 byte header):
-                    SF7:  ~56 ms  → ~535 messages/day
-                    SF9:  ~206 ms → ~145 messages/day
-                    SF12: ~1.5 s  → ~20 messages/day
                 </aside>
             </section>
             <section>
@@ -222,6 +240,12 @@ module.exports = { decodeUplink };</code></pre>
                     Hardware: Raspberry Pi with LoRaWAN concentrator board and antenna,
                     LTE modem/stick for internet, GPS module for connectivity and system time
                     (the Pi does not retain time after a power outage).
+                </aside>
+            </section>
+            <section>
+                <img src="img/lorawan_illustration_full_operation.svg" 
+                    style="width:100%; height:100%; object-fit:contain;">
+                <aside class="notes">
                 </aside>
             </section>
             <section>
