@@ -183,48 +183,6 @@ module.exports = { decodeUplink };</code></pre>
                 </aside>
             </section>
             <section>
-                <h3>A LoRaWAN message</h3>
-                <p>The gateway receives an encrypted LoRaWAN frame:</p>
-                <table style="font-family: monospace; font-size: 0.75em; border-collapse: collapse; width: 100%; margin: 0.5em 0;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid #aaa;">
-                            <th style="padding: 0.3em 0.6em;">MHDR</th>
-                            <th style="padding: 0.3em 0.6em;">DevAddr</th>
-                            <th style="padding: 0.3em 0.6em;">FCnt</th>
-                            <th style="padding: 0.3em 0.6em;">FPort</th>
-                            <th style="padding: 0.3em 0.6em;">frmPayload</th>
-                            <th style="padding: 0.3em 0.6em;">MIC</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">40</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">d4c3b2a1</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">0200</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">01</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">2c46e592c0b8c064</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">24fc865e</td>
-                        </tr>
-                        <tr style="color: #aaa; font-style: italic;">
-                            <td>type</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">A1B2C3D4</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">2</td>
-                            <td style="padding: 0.3em 0.6em; text-align: center;">1</td>
-                            <td>(encrypted)</td>
-                            <td>checksum</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <p>The gateway forwards the frame to TTN as-is.<br>
-                <em>Everything visible except the frame payload.</em></p>
-                <aside class="notes">
-                    All fields except frmPayload are unencrypted and readable without any keys.
-                    The gateway forwards the frame unchanged to TTN.
-                    DevAddr and FCnt are transmitted little-endian on the wire
-                    (d4c3b2a1 → A1B2C3D4, 0200 → 2).
-                </aside>
-            </section>
-            <section>
                 <h3>The hybrid approach</h3>
                 <div style="display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 0px; text-align: left; align-items: center;">
                     <img src="img/mobile_gateway.jpg">
@@ -328,6 +286,48 @@ module.exports = { decodeUplink };</code></pre>
             </section>
 
             <!-- ==================== Decoding walkthrough ==================== -->
+            <section>
+                <h3>A LoRaWAN message</h3>
+                <p>The gateway receives an encrypted LoRaWAN frame:</p>
+                <table style="font-family: monospace; font-size: 0.75em; border-collapse: collapse; width: 100%; margin: 0.5em 0;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #aaa;">
+                            <th style="padding: 0.3em 0.6em;">MHDR</th>
+                            <th style="padding: 0.3em 0.6em;">DevAddr</th>
+                            <th style="padding: 0.3em 0.6em;">FCnt</th>
+                            <th style="padding: 0.3em 0.6em;">FPort</th>
+                            <th style="padding: 0.3em 0.6em;">frmPayload</th>
+                            <th style="padding: 0.3em 0.6em;">MIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">40</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">d4c3b2a1</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">0200</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">01</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">2c46e592c0b8c064</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">24fc865e</td>
+                        </tr>
+                        <tr style="color: #aaa; font-style: italic;">
+                            <td>type</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">A1B2C3D4</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">2</td>
+                            <td style="padding: 0.3em 0.6em; text-align: center;">1</td>
+                            <td>(encrypted)</td>
+                            <td>checksum</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>The gateway forwards the frame to TTN as-is.<br>
+                <em>Everything visible except the frame payload.</em></p>
+                <aside class="notes">
+                    All fields except frmPayload are unencrypted and readable without any keys.
+                    The gateway forwards the frame unchanged to TTN.
+                    DevAddr and FCnt are transmitted little-endian on the wire
+                    (d4c3b2a1 → A1B2C3D4, 0200 → 2).
+                </aside>
+            </section>
             <section>
                 <h3>LoRaWAN encryption</h3>
                 <ul>
