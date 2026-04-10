@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speaker Cheat Sheet – PyConDE 2026</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+
+        :root {
+            --bg: #1a1a2e;
+            --card: #16213e;
+            --border: #0f3460;
+            --accent: #e94560;
+            --green: #68d391;
+            --blue: #6ab0e0;
+            --text: #e0e0e0;
+            --muted: #888;
+            --mono: 'JetBrains Mono', monospace;
+            --serif: 'Lora', Georgia, serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--serif);
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        header {
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--accent);
+            font-family: var(--mono);
+            letter-spacing: 0.05em;
+        }
+
+        header p {
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-family: var(--mono);
+            margin-top: 0.3rem;
+        }
+
+        .slide {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--green);
+            border-radius: 4px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .slide-header {
+            display: flex;
+            align-items: baseline;
+            gap: 0.8rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .slide-num {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .slide-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--green);
+            font-family: var(--mono);
+        }
+
+        .slide-text {
+            font-size: 0.95rem;
+            color: var(--text);
+            font-style: italic;
+        }
+
+        .slide-text p + p {
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>// speaker_cheatsheet.md</h1>
+    <p>PyConDE &amp; PyData Darmstadt 2026 · Offline Fallback for a Mobile LoRaWAN Gateway</p>
+</header>
+
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">01</span>
+        <span class="slide-title">Offline Fallback for a Mobile LoRaWAN Gateway</span>
+    </div>
+    <div class="slide-text">
+        <p>Thanks for the introduction and welcome to my talk.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">02</span>
+        <span class="slide-title">lorawan_illustration_sensors_only.svg</span>
+    </div>
+    <div class="slide-text">
+        <p>At first I would like to mention some typical use cases of LoRaWAN sensors. Imagine a sunny day and you consider to go swimming – it would be nice to know the water temperature of the nearby lake. Or the opposite: it is raining a lot and you are afraid the water level of the river is threatening your home. Or you arranged a shipment and you would like to know where your assets are.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">03</span>
+        <span class="slide-title">Typical sensor nodes</span>
+    </div>
+    <div class="slide-text">
+        <p>Let's take a look at these LoRaWAN sensors, which are called nodes. The battery life of temperature or water level sensors may last for several years and can be extended further with a small solar panel. In a GPS tracker like this one in my hand, the battery lasts just days or weeks depending on the update rate.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">04</span>
+        <span class="slide-title">lorawan_illustration_normal_operation.svg</span>
+    </div>
+    <div class="slide-text">
+        <p>The messages sent by these sensor nodes are received by nearby gateways. The gateways forward the data to the network server where it could be picked up by the end user's application.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">05</span>
+        <span class="slide-title">LoRaWAN – what is it?</span>
+    </div>
+    <div class="slide-text">
+        <p>But what exactly is LoRaWAN? LoRaWAN stands for Long Range Wide Area Network – where long range means up to a few kilometres depending on the environment. In Europe it is operated at 868 MHz. The power consumption is low, but so is the data rate. All transmissions are encrypted.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">06</span>
+        <span class="slide-title">LoRaWAN data rate &amp; limits</span>
+    </div>
+    <div class="slide-text">
+        <p>The data rate of LoRaWAN is up to 5.5 kilobits per second – comparable to a fax machine.</p>
+        <p>However, we are not limited by the availability of thermopaper but by legal requirements – the German Bundesnetzagentur enforces a 1% duty cycle limit.</p>
+        <p>In addition to that, there is the fair use policy of TTN allowing a maximum of 30 seconds airtime per day. But what does this mean for us? A typical LoRaWAN data frame has about 200 ms airtime, which means about 150 messages per day – or one every 5 minutes.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">07</span>
+        <span class="slide-title">LoRaWAN architecture</span>
+    </div>
+    <div class="slide-text">
+        <p>Let's take a closer look at the gateway. It receives data frames from all nearby sensor nodes – not only ours – and forwards them to the network server. We are using The Things Stack Sandbox, the free tier of The Things Network for non-commercial use, which I'll refer to as TTN from now on. Decryption and decoding happen in the cloud, which means our operation relies on a working internet connection.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">08</span>
+        <span class="slide-title">From gateway to application</span>
+    </div>
+    <div class="slide-text">
+        <p>On the network server, the message is matched by its device address to the corresponding session – which holds the keys to decrypt the payload. This also reveals the application ID and device ID, which are not publicly visible in the raw frame. Based on these IDs, the decrypted payload is passed to a device-specific JavaScript decoder stored in TTN. For a water level sensor this is where raw bytes get converted into actual centimetres. Here you see a minimal example that simply passes through the raw bytes.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">09</span>
+        <span class="slide-title">Sensor online, internet offline</span>
+    </div>
+    <div class="slide-text">
+        <p>So far so good – as long as the internet connection is working. But imagine a water level sensor like this one, permanently deployed and especially critical during a flood event. The flood disrupts the internet connection. We can no longer observe the water level. What should we do?</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">10</span>
+        <span class="slide-title">lorawan_illustration_blackout_operation.svg</span>
+    </div>
+    <div class="slide-text">
+        <p>For this purpose I am using a Raspberry Pi based gateway which presents the received sensor data directly to the user. In the following I will explain all the steps of my journey.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">11</span>
+        <span class="slide-title">The hybrid approach</span>
+    </div>
+    <div class="slide-text">
+        <p>My solution is the hybrid gateway – a Raspberry Pi with a LoRaWAN concentrator board, antenna, GPS module for accurate system time, and an LTE modem for internet connectivity. Under normal operation it acts as a standard TTN gateway, forwarding sensor data to the cloud. But at the same time it fetches data back from TTN that we need to decode messages locally in case of an outage. And it serves the decoded data directly to the user.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">12</span>
+        <span class="slide-title">lorawan_illustration_full_operation.svg</span>
+    </div>
+    <div class="slide-text">
+        <p>Here you can see how all the pieces fit together – sensors, the two standard gateways, our Raspberry Pi gateway, the TTN cloud, and the end user. Under normal operation everything works in parallel.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">13</span>
+        <span class="slide-title">UDP stream duplication</span>
+    </div>
+    <div class="slide-text">
+        <p>The LoRaWAN packet forwarder interacts with the LoRaWAN hardware, forwarding received data frames via UDP to the network server. This is where we start to intercept. Our multiplexer duplicates these frames – they are still forwarded to TTN if available, but also to our message collector service running on the Raspberry Pi. The messages are put into a Redis pipeline where they are picked up by our message handler to be processed and stored locally.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">14</span>
+        <span class="slide-title">A LoRaWAN message</span>
+    </div>
+    <div class="slide-text">
+        <p>This is the raw LoRaWAN frame as received by the gateway. It consists of the message header, device address, frame control, frame counter, frame port, the encrypted payload, and a MIC – the message integrity code. The message type 0x40 indicates an unconfirmed uplink. Everything except the payload is readable without any keys. The second row shows the interpreted values – DevAddr and FCnt are transmitted little-endian on the wire. But there is still something missing to read the encrypted payload…</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">15</span>
+        <span class="slide-title">LoRaWAN encryption</span>
+    </div>
+    <div class="slide-text">
+        <p>To decrypt the payload locally, we need the session keys. The Network Session Key allows us to verify the integrity of the message, while the Application Session Key is required to actually decrypt the payload. We need to fetch these keys from the TTN cloud and cache them locally – while the internet connection is still available.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">16</span>
+        <span class="slide-title">Fetching session keys from TTN</span>
+    </div>
+    <div class="slide-text">
+        <p>We need to perform two API requests per device to obtain both session keys as well as the individual payload decoder. If you have many devices, be mindful of the TTN API quota limits. All of this is stored in a local SQLite database.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">17</span>
+        <span class="slide-title">Python meets JavaScript</span>
+    </div>
+    <div class="slide-text">
+        <p>For the next step we cannot continue with Python. The lora-packet library for decryption is written in JavaScript, and device decoders exist as JavaScript only. Rewriting is not an option when there are many different complex decoders. Therefore I encapsulate the JS code behind an HTTP API written in Node.js.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">18</span>
+        <span class="slide-title">Node.js HTTP service</span>
+    </div>
+    <div class="slide-text">
+        <p>And this is what it looks like. I am using the Express framework, which looks somewhat similar to a simple FastAPI setup. We include the lora-packet library and a middleware to parse JSON request bodies. Let's skip the implementation details and focus on the three API endpoints representing the processing steps of our message handler – hosted on port 3000. You may ask: why an HTTP service instead of subprocess calls to Node.js from Python? The service starts once and stays running – not once per message – and errors surface as HTTP status codes, making them easier to handle.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">19</span>
+        <span class="slide-title">Decryption at the gateway</span>
+    </div>
+    <div class="slide-text">
+        <p>Now we finally see Python code again. We start with the raw data frame you saw earlier. We push it to the info endpoint and obtain the device address along with other parameters. With the device address we look up our session database for the application ID, device ID, and session keys. This allows us to call the decryption endpoint – sending the full message and the session keys. Decryption requires not just the encrypted payload but also other frame parameters like the frame counter. Finally we have the decrypted payload – but we still don't know what it means.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">20</span>
+        <span class="slide-title">Payload decoding</span>
+    </div>
+    <div class="slide-text">
+        <p>For this step we call the decode endpoint with application "demo" and device ID "hello_world". This allows us to look up the device-specific decoder, which in our case simply converts the bytes to a Unicode string. I will reveal what it contains on the last slide.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">21</span>
+        <span class="slide-title">Local data storage &amp; API</span>
+    </div>
+    <div class="slide-text">
+        <p>The decoded messages are stored in a local SQLite database. A read-only FastAPI service on port 8080 provides access to both the latest sensor values and historical time series data. During an internet outage, everything keeps running – the data stays accessible locally.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">22</span>
+        <span class="slide-title">Data flow (normal operation)</span>
+    </div>
+    <div class="slide-text">
+        <p>Let me summarize the full data flow. On the left, request_ttn_devices fetches the session keys. On the right, ttn_storage_fetcher mirrors messages from TTN storage. Both write into SQLite. In the center, the message_handler processes incoming frames. reprocess_messages retries any messages that couldn't be decoded immediately due to missing session information. The REST API reads from both tables and serves the data to the client.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">23</span>
+        <span class="slide-title">Data flow (internet outage)</span>
+    </div>
+    <div class="slide-text">
+        <p>During an outage, the red components stop working – we can no longer fetch new session keys or mirror TTN storage messages. The blue components are frozen at their last known state. But the white components keep running: gateway messages are still received and served via the REST API.</p>
+    </div>
+</div>
+<div class="slide">
+    <div class="slide-header">
+        <span class="slide-num">24</span>
+        <span class="slide-title">Thank you for your attention!</span>
+    </div>
+    <div class="slide-text">
+        <p>And by the way – this is what was in that payload all along. Thank you for your attention, happy to take questions, and the full implementation is available on GitHub.</p>
+    </div>
+</div>
+
+</body>
+</html>
