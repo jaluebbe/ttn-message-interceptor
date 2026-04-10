@@ -22,6 +22,18 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        @media print {
+            body { background: #fff; color: #000; padding: 1rem; }
+            .slide { break-inside: avoid; page-break-inside: avoid; border-left: 3px solid #468; border-color: #468; background: #f9f9f9; color: #000; margin-bottom: 1rem; }
+            .slide-num { background: #dde; color: #235; }
+            .slide-title { color: #235; }
+            .slide-text { color: #111; font-style: normal; }
+            .slide-text p { font-style: italic; }
+            header { border-color: #468; }
+            header h1 { color: #235; }
+            header p { color: #555; }
+        }
+
         body {
             background: var(--bg);
             color: var(--text);
